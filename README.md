@@ -3,7 +3,7 @@ Sync video playback with your friends.
 
 ### Work in progress.
 
-nat-sync is a server-client program that syncronizes media playback between clients.
+nat-sync is a server-client program that synchronizes media playback between clients.
 
 It comes out of a great love of syncplay, and a desire to make it feel native and great to use.
 We won't be forking or using any code from syncplay. It's written with thousands of lines of, I assume,
@@ -14,7 +14,10 @@ The idea is to make the client-server sync working, and then make a good TUI for
 After that, get the TUI to work on MacOS, then a GUI client for Windows, Linux, Web, and MacOS, in that order. 
 
 I'm interested in using the "proper" languages for the GUIs, C# for Windows with their library, 
-Swift for MacOS, and C/C++ GTK for Linux. 
+Swift for MacOS, and C/C++ GTK for Linux. This said, I am very interested if React Native is a good
+solution for making cross-platform UIs that feel native to the respective OS. If it's just better,
+and it works just as well, I might go this route. However, I'm just generally interested in making
+native UIs, so I might go the more difficult route anyways to understand the landscape.
 
 For the TUI, I'm going to use Go, for two reasons. One, it's simpler to build it in the same language as the server itself, making a viable release happen sooner. 
 Two, Go just so happens to have a ton of TUI support with libraries like bubbletea. However, putting in the work to make it beautiful will come much later.
