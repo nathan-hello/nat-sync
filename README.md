@@ -39,8 +39,8 @@ the different languages, which should make this process easier. I haven't done t
 Warning: this will hopefully be over-engineered. It's a learning experience for me, recreating an application that I love.
 Learning best practices by building and seeing what works.
 
-While I'm not going to copy or translate any code from syncplay, I will make notes of when I was inspired from what they did throughout the source.
+While I'm not going to copy or translate any code from syncplay, I will make notes of when I was inspired from what they did.
 Hopefully my MIT license and their Apache 2.0 license is compatible with this. As far as I can tell, I don't have responsibility towards their license
 because I'm not at all modifying or taking their code. This is a full-scale rewrite, mostly from the outside looking in - making assumptions on how it
 works, or how it should work. With this said, in any instance in which I do get specifically inspired towards a solution, I am going to attribute in a comment in the relevant file. 
-Some version of this paragraph will be available in future revisions of this readme. 
+Some version of this paragraph will be available in future revisions of this readme, unless I find that I did not take any such inspiration.
