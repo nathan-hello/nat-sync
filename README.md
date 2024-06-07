@@ -47,3 +47,24 @@ Hopefully my MIT license and their Apache 2.0 license is compatible with this. A
 because I'm not at all modifying or taking their code. This is a full-scale rewrite, mostly from the outside looking in - making assumptions on how it
 works, or how it should work. With this said, in any instance in which I do get specifically inspired towards a solution, I am going to attribute in a comment in the relevant file. 
 Some version of this paragraph will be available in future revisions of this readme, unless I find that I did not take any such inspiration.
+
+
+FEATURE IDEAS NOT IN SYNCPLAY:
+
+- Pause all clients if one is buffering
+    - This prevents going forward->skipping back->going foward cycle
+    - Syncplay doesn't spawn an event if someone is buffering
+- Pre-download entire video before playback
+    - How would you write video file to disk?
+    - Automatic deletion is opt-in
+
+
+OPTIONS, IDEALLY:
+
+- Server, client, both (with port numbers for either)
+- username, password for server if applicable
+- connecting to server X (or from name if in saved_servers.txt)
+- path to video player
+- args to video player
+- DO_NOT_USE_OR_YOU_WILL_BE_FIRED_disable_tls
+- bring_your_own_cert_path
