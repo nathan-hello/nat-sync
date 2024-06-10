@@ -2,12 +2,13 @@ package src
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"net"
 	"os"
 )
 
-func CreateClient() {
+func CreateClient(cmdQueue chan Command) {
 	conn, err := net.Dial("tcp", ":4000")
 	if err != nil {
 		fmt.Println("Error connecting to server:", err)
@@ -30,7 +31,19 @@ func CreateClient() {
 	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {
 		text := scanner.Text()
-		_, err := fmt.Fprintf(conn, text+"\n")
+		if text == "seek" {
+			asdf := Seek{
+				NewTime: "00h23m50s",
+			}
+			asdf.Render()
+			a, err := json.Marshal(asdf)
+			if err != nil {
+				fmt.Fprintln(conn, err)
+			} else {
+				fmt.Fprintln(conn, string(a))
+			}
+		}
+		_, err := fmt.Fprintln(conn, text)
 		if err != nil {
 			fmt.Println("Error sending message:", err)
 			return

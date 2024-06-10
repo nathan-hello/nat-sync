@@ -14,14 +14,16 @@ import (
 var signalListener = make(chan os.Signal, 1) // this only works on unix
 var cleanupTime = make(chan bool, 1)
 
+var cmdQueue chan src.Command
+
 func main() {
 	args := flag.NewFlagSet("natsync", flag.ExitOnError)
 	_ = args.String("client", "4000", "Create a client to join natsync servers")
 	_ = args.String("server", "4000", "Become a server for natsync clients")
 
-	go src.CreateServer(cleanupTime)
+	go src.CreateServer(cmdQueue)
 	time.Sleep(2 * time.Second)
-	go src.CreateClient()
+	go src.CreateClient(cmdQueue)
 
 	signal.Notify(signalListener, syscall.SIGINT, syscall.SIGTERM, syscall.SIGTSTP)
 	signal := <-signalListener
