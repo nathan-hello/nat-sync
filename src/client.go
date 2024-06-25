@@ -8,8 +8,8 @@ import (
 	"os"
 )
 
-func CreateClient(cmdQueue chan Command) {
-	conn, err := net.Dial("tcp", ":4000")
+func CreateClient(cmdQueue chan Command, address string) {
+	conn, err := net.Dial("tcp", address)
 	if err != nil {
 		fmt.Println("Error connecting to server:", err)
 		return
@@ -33,10 +33,14 @@ func CreateClient(cmdQueue chan Command) {
 		text := scanner.Text()
 		if text == "seek" {
 			asdf := Seek{
-				NewTime: "00h23m50s",
+				Location: "00h23m50s",
 			}
-			asdf.Render()
-			a, err := json.Marshal(asdf)
+			result, err := asdf.Render()
+			if err != nil {
+				fmt.Fprintln(conn, err)
+				return
+			}
+			a, err := json.Marshal(result)
 			if err != nil {
 				fmt.Fprintln(conn, err)
 			} else {

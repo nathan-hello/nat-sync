@@ -12,33 +12,49 @@ func MarshalErrToJSON(raw any, err error) string {
 
 }
 
-type BaseCommand struct {
-	Command string `json:"command"`
-	Version string `json:"version"`
-}
-
 type RenderedCommand struct {
-	BaseCommand
-	Argument any `json:"arg"`
+	Command string      `json:"command"`
+	Version string      `json:"version"`
+	Creator string      `json:"creator"`
+	Content interface{} `json:"content"`
 }
 
 type Command interface {
-	Render() error
+	Render() (RenderedCommand, error)
 }
 
 type Seek struct {
-	BaseCommand
-	NewTime string `json:"new_time"`
+	Creator  string `json:"creator"`
+	Location string `json:"difference"`
 }
 
-func (s *Seek) Render() error {
-	s.Command = "seek"
-	s.Version = CurrentVersion
-	t, err := time.ParseDuration(s.NewTime)
+func (c *Seek) Render() (*RenderedCommand, error) {
+	t, err := time.ParseDuration(c.Location)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	// s.NewTime = fmt.Sprintf("%fh:%fm:%fs", t.Hours(), t.Minutes(), t.Seconds())
-	s.NewTime = fmt.Sprintf("%.0f", t.Seconds())
-	return nil
+	c.Location = fmt.Sprintf("%.0f", t.Seconds())
+	return &RenderedCommand{Command: "seek", Version: CurrentVersion, Content: c, Creator: c.Creator}, nil
+}
+
+type Pause struct {
+	Creator string `json:"creator"`
+}
+
+func (c *Pause) Render() (*RenderedCommand, error) {
+	return &RenderedCommand{Command: "pause", Version: CurrentVersion, Creator: c.Creator}, nil
+}
+
+type Play struct {
+	Creator string `json:"creator"`
+}
+
+func (c *Play) Render() (*RenderedCommand, error) {
+	return &RenderedCommand{Command: "play", Version: CurrentVersion, Creator: c.Creator}, nil
+}
+
+type NewVideo struct {
+	Uri     string `json:"uri"`
+	Local   bool   `json:"local"`
+	Creator string `json:"creator"`
 }
