@@ -3,12 +3,12 @@ package src
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
-	"time"
 )
 
-func CreateServer(cmdQueue chan Command, address string) {
+func CreateServer(address string, serverInit chan bool) {
 	listener, err := net.Listen("tcp", address)
 	if err != nil {
 		fmt.Println("Error starting server:", err)
@@ -16,52 +16,116 @@ func CreateServer(cmdQueue chan Command, address string) {
 	}
 	defer listener.Close()
 
-	fmt.Println("Server started on " + address)
+	serverInit <- true
+	fmt.Println("Started server at " + address)
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
 			fmt.Println("Error accepting connection:", err)
 			continue
 		}
-		go handleConnection(conn, cmdQueue)
+		go handleConnection(conn)
 	}
 }
 
-func handleConnection(conn net.Conn, cmdQueue chan Command) {
+func handleNewMessage(msg []byte) (*RenderedCommand, error) {
+	// Unmarshal into the generic RenderedCommand struct
+	var baseCmd RenderedCommand
+	err := json.Unmarshal(msg, &baseCmd)
+	if err != nil {
+		return nil, err
+	}
+
+	// Determine the command type and unmarshal the content accordingly
+	switch baseCmd.Command {
+	case "seek":
+		var content Seek
+		err := json.Unmarshal(baseCmd.Content, &content)
+		if err != nil {
+			return nil, err
+		}
+		baseCmd.Content = content
+	case "pause":
+		var content Pause
+		if err := json.Unmarshal(baseCmd.Content.([]byte), &content); err != nil {
+			return nil, err
+		}
+		baseCmd.Content = content
+	case "play":
+		var content Play
+		if err := json.Unmarshal(baseCmd.Content.([]byte), &content); err != nil {
+			return nil, err
+		}
+		baseCmd.Content = content
+	case "newvideo":
+		var content NewVideo
+		if err := json.Unmarshal(baseCmd.Content.([]byte), &content); err != nil {
+			return nil, err
+		}
+		baseCmd.Content = content
+	default:
+		return nil, errors.New("unknown command type")
+	}
+
+	// Type switch to handle the specific command type
+	switch content := baseCmd.Content.(type) {
+	case Seek:
+		fmt.Println("seek cmd found:: ", content)
+		return &baseCmd, nil
+	case Pause:
+		fmt.Println("pause cmd found:: ", content)
+		return &baseCmd, nil
+	case Play:
+		fmt.Println("play cmd found:: ", content)
+		return &baseCmd, nil
+	case NewVideo:
+		fmt.Println("newvideo cmd found:: ", content)
+		return &baseCmd, nil
+	default:
+		fmt.Println("default: ", content)
+	}
+	return nil, errors.New("invalid content")
+}
+
+func handleConnection(conn net.Conn) {
 	defer conn.Close()
 	reader := bufio.NewReader(conn)
 
-	go func() {
-		for {
-			message, err := reader.ReadString('\n')
-			if err != nil {
-				fmt.Println("Connection closed")
-				return
-			}
-			fmt.Print("Received from client: ", message)
-		}
-	}()
-
-	send := func(s string) {
-		for {
-			time.Sleep(5 * time.Second) // Adjust the interval as needed
-			_, err := fmt.Fprintf(conn, "Message from server: %s\n", s)
-			if err != nil {
-				fmt.Println("Error sending message:", err)
-				return
-			}
-		}
-	}
-
-	for cmd := range cmdQueue {
-		result, err := cmd.Render()
+	for {
+		message, err := reader.ReadBytes('\n')
 		if err != nil {
-			send(MarshalErrToJSON(cmd, err))
+			fmt.Println("Connection closed")
+			return
 		}
-		bits, err := json.Marshal(result)
+		fmt.Print("Received from client: ", string(message))
+		cmd, err := handleNewMessage(message)
 		if err != nil {
-			send(MarshalErrToJSON(cmd, err))
+			fmt.Println(err)
+			return
 		}
-		send(string(bits))
+		fmt.Println("Rendered proper command: ", cmd)
 	}
 }
+
+// send := func(s string) {
+// 	for {
+// 		_, err := fmt.Fprintf(conn, "Message from server: %s\n", s)
+// 		if err != nil {
+// 			fmt.Println("Error sending message:", err)
+// 			return
+// 		}
+// 	}
+// }
+//
+// for cmd := range cmdQueue {
+// 	result, err := cmd.Render()
+// 	if err != nil {
+// 		send(MarshalErrToJSON(cmd, err))
+// 	}
+// 	bits, err := json.Marshal(result)
+// 	if err != nil {
+// 		send(MarshalErrToJSON(cmd, err))
+// 	}
+// 	send(string(bits))
+// }
+//

@@ -12,15 +12,14 @@ func MarshalErrToJSON(raw any, err error) string {
 
 }
 
+type Command interface {
+	Render() (RenderedCommand, error)
+}
+
 type RenderedCommand struct {
 	Command string      `json:"command"`
 	Version string      `json:"version"`
-	Creator string      `json:"creator"`
 	Content interface{} `json:"content"`
-}
-
-type Command interface {
-	Render() (RenderedCommand, error)
 }
 
 type Seek struct {
@@ -34,7 +33,7 @@ func (c *Seek) Render() (*RenderedCommand, error) {
 		return nil, err
 	}
 	c.Location = fmt.Sprintf("%.0f", t.Seconds())
-	return &RenderedCommand{Command: "seek", Version: CurrentVersion, Content: c, Creator: c.Creator}, nil
+	return &RenderedCommand{Command: "seek", Version: CurrentVersion, Content: c}, nil
 }
 
 type Pause struct {
@@ -42,7 +41,7 @@ type Pause struct {
 }
 
 func (c *Pause) Render() (*RenderedCommand, error) {
-	return &RenderedCommand{Command: "pause", Version: CurrentVersion, Creator: c.Creator}, nil
+	return &RenderedCommand{Command: "pause", Version: CurrentVersion, Content: c}, nil
 }
 
 type Play struct {
@@ -50,11 +49,11 @@ type Play struct {
 }
 
 func (c *Play) Render() (*RenderedCommand, error) {
-	return &RenderedCommand{Command: "play", Version: CurrentVersion, Creator: c.Creator}, nil
+	return &RenderedCommand{Command: "play", Version: CurrentVersion, Content: c}, nil
 }
 
 type NewVideo struct {
+	Creator string `json:"creator"`
 	Uri     string `json:"uri"`
 	Local   bool   `json:"local"`
-	Creator string `json:"creator"`
 }
