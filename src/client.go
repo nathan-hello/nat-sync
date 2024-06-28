@@ -35,12 +35,12 @@ func CreateClient(address string, init chan bool) {
 		text := scanner.Text()
 		cmd := commands.Command{Version: commands.CurrentVersion, Creator: "a"}
 		if text == "seek" {
-			asdf := commands.Seek{
+			asdf := &commands.Seek{
 				Hours: 0,
 				Mins:  23,
 				Secs:  29,
 			}
-			cmd.Type = "seek"
+			cmd.Type = commands.SeekHead
 			cmd.Content = asdf
 			bits, err := commands.EncodeCommand(cmd)
 			if err != nil {
@@ -51,8 +51,8 @@ func CreateClient(address string, init chan bool) {
 
 		if text == "play" {
 			asdf := commands.Play{}
-			cmd.Type = "play"
-			cmd.Content = asdf
+			cmd.Type = commands.PlayHead
+			cmd.Content = &asdf
 			bits, err := commands.EncodeCommand(cmd)
 			if err != nil {
 				fmt.Println("error in play: ", err)
@@ -62,8 +62,8 @@ func CreateClient(address string, init chan bool) {
 
 		if text == "pause" {
 			asdf := commands.Pause{}
-			cmd.Type = "pause"
-			cmd.Content = asdf
+			cmd.Type = commands.PauseHead
+			cmd.Content = &asdf
 			bits, err := commands.EncodeCommand(cmd)
 			if err != nil {
 				fmt.Println("error in pause: ", err)
@@ -71,10 +71,10 @@ func CreateClient(address string, init chan bool) {
 			fmt.Fprintln(conn, bits)
 		}
 
-		_, err := fmt.Fprintln(conn, text)
-		if err != nil {
-			fmt.Println("Error sending message:", err)
-			return
-		}
+		// _, err := fmt.Fprintln(conn, text)
+		// if err != nil {
+		// 	fmt.Println("Error sending message:", err)
+		// 	return
+		// }
 	}
 }

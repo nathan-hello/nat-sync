@@ -19,3 +19,7 @@ func ErrDecodeType(bits []byte) error {
 func ErrFixedContentLength(cmd interface{}, subCmd interface{}) error {
 	return fmt.Errorf("content is greater than 65535 bits, full command: %#v, content: %#v", cmd, subCmd)
 }
+
+func ErrNoCmdHeadFound(head byte) error {
+	return fmt.Errorf("cmd head not found from bit: %b", head)
+}

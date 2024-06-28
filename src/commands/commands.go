@@ -4,18 +4,17 @@ import "encoding/binary"
 
 const CurrentVersion = 0000_0001
 
-type CmdHead string
-
-var (
-	SeekCmd     CmdHead = "seek"
-	PauseCmd    CmdHead = "pause"
-	PlayCmd     CmdHead = "play"
-	NewVideoCmd CmdHead = "new_video"
-	JoinRoomCmd CmdHead = "join"
+const (
+	ExitHead     = 0000_0000
+	SeekHead     = 0000_0001
+	PauseHead    = 0000_0010
+	PlayHead     = 0000_0011
+	NewVideoHead = 0000_0100
+	JoinRoomHead = 0000_0101
 )
 
 type Command struct {
-	Type    CmdHead
+	Type    uint8
 	Version uint16
 	Creator string
 	Content SubCommand
@@ -40,10 +39,10 @@ type NewVideo struct {
 	Local     bool
 }
 
-func (c Seek) ToBits() []byte  { return []byte{c.Hours, c.Mins, c.Secs} }
-func (c Play) ToBits() []byte  { return []byte{} }
-func (c Pause) ToBits() []byte { return []byte{} }
-func (c NewVideo) ToBits() []byte {
+func (c *Seek) ToBits() []byte  { return []byte{c.Hours, c.Mins, c.Secs} }
+func (c *Play) ToBits() []byte  { return []byte{} }
+func (c *Pause) ToBits() []byte { return []byte{} }
+func (c *NewVideo) ToBits() []byte {
 	var bits []byte
 	var l byte
 	if c.Local {
@@ -59,7 +58,7 @@ func (c NewVideo) ToBits() []byte {
 
 }
 
-func (c Seek) FromBits(bits []byte)     { c.Hours = bits[0]; c.Mins = bits[1]; c.Secs = bits[2] }
-func (c Play) FromBits(bits []byte)     {}
-func (c Pause) FromBits(bits []byte)    {}
-func (c NewVideo) FromBits(bits []byte) {}
+func (c *Seek) FromBits(bits []byte)     { c.Hours = bits[0]; c.Mins = bits[1]; c.Secs = bits[2] }
+func (c *Play) FromBits(bits []byte)     {}
+func (c *Pause) FromBits(bits []byte)    {}
+func (c *NewVideo) FromBits(bits []byte) {}

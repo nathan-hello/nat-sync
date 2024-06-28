@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"fmt"
 	"net"
+
+	"github.com/nathan-hello/nat-sync/src/commands"
 )
 
 func CreateServer(address string, serverInit chan bool) {
@@ -36,13 +38,17 @@ func handleConnection(conn net.Conn) {
 			fmt.Println("Connection closed")
 			return
 		}
+
+		if len(message) == 8 {
+			continue
+		}
+
 		fmt.Printf("Received from client: %b\nstring %s", message, string(message))
-		// cmd, err := handleNewMessage(message)
-		// if err != nil {
-		// 	fmt.Println(err)
-		// 	return
-		// }
-		// fmt.Println("Rendered proper command: ", cmd)
+		dec, err := commands.DecodeCommand(message)
+		if err != nil {
+			fmt.Println("err: ", err)
+		}
+		fmt.Printf("%#v\n", dec)
 	}
 }
 
@@ -55,16 +61,3 @@ func handleConnection(conn net.Conn) {
 // 		}
 // 	}
 // }
-//
-// for cmd := range cmdQueue {
-// 	result, err := cmd.Render()
-// 	if err != nil {
-// 		send(MarshalErrToJSON(cmd, err))
-// 	}
-// 	bits, err := json.Marshal(result)
-// 	if err != nil {
-// 		send(MarshalErrToJSON(cmd, err))
-// 	}
-// 	send(string(bits))
-// }
-//

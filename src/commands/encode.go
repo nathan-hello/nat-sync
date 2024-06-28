@@ -3,6 +3,7 @@ package commands
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 
 	"github.com/nathan-hello/nat-sync/src/utils"
 )
@@ -31,33 +32,33 @@ func EncodeCommand(cmd Command) ([]byte, error) {
 		cmd.Version = CurrentVersion
 	}
 
-	err = binary.Write(bits, binary.LittleEndian, fixedCmd.Type)
+	err = binary.Write(bits, binary.BigEndian, fixedCmd.Type)
 	if err != nil {
 		return nil, err
 	}
-	err = binary.Write(bits, binary.LittleEndian, fixedCmd.Version)
+	err = binary.Write(bits, binary.BigEndian, fixedCmd.Version)
 	if err != nil {
 		return nil, err
 	}
-	err = binary.Write(bits, binary.LittleEndian, fixedCmd.Creator)
+	err = binary.Write(bits, binary.BigEndian, fixedCmd.Creator)
 	if err != nil {
 		return nil, err
 	}
-	err = binary.Write(bits, binary.LittleEndian, fixedCmd.ContentLength)
+	err = binary.Write(bits, binary.BigEndian, fixedCmd.ContentLength)
 	if err != nil {
 		return nil, err
 	}
-	err = binary.Write(bits, binary.LittleEndian, fixedCmd.Content)
+	err = binary.Write(bits, binary.BigEndian, fixedCmd.Content)
 	if err != nil {
 		return nil, err
 	}
+
+	fmt.Printf("decoded bytes: %b ", bits.Bytes())
 
 	return bits.Bytes(), nil
 }
 
 func cmdToFixedLength(cmd *Command) (*FixedLengthCommand, error) {
-	fixedType := typeFixer[cmd.Type]
-
 	content := cmd.Content.ToBits()
 	contentLength := len(content)
 	if contentLength > 65535 {
@@ -65,20 +66,12 @@ func cmdToFixedLength(cmd *Command) (*FixedLengthCommand, error) {
 	}
 
 	return &FixedLengthCommand{
-		Type:          fixedType,
+		Type:          uint8(cmd.Type),
 		Version:       cmd.Version,
 		Creator:       userFixer(cmd.Creator),
 		ContentLength: uint16(contentLength),
 		Content:       content,
 	}, nil
-}
-
-var typeFixer = map[CmdHead]uint8{
-	"seek":      0000_0001,
-	"pause":     0000_0010,
-	"play":      0000_0011,
-	"new_video": 0000_0100,
-	"join":      0000_0101,
 }
 
 func userFixer(s string) [32]byte {
