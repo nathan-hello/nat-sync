@@ -18,7 +18,6 @@ const (
 var (
 	signalListener = make(chan os.Signal, 1) // this only works on unix
 	cleanupTime    = make(chan bool, 1)
-	clientCmdQueue chan src.Command
 	clientInit     = make(chan bool)
 	serverInit     = make(chan bool)
 )
@@ -30,7 +29,7 @@ func main() {
 
 	go src.CreateServer(serverAddr, serverInit)
 	<-serverInit
-	go src.CreateClient(clientCmdQueue, clientAddr, clientInit)
+	go src.CreateClient(clientAddr, clientInit)
 	<-clientInit
 
 	signal.Notify(signalListener, syscall.SIGINT, syscall.SIGTERM, syscall.SIGTSTP)

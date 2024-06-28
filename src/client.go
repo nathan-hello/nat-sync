@@ -2,13 +2,14 @@ package src
 
 import (
 	"bufio"
-	"encoding/json"
 	"fmt"
 	"net"
 	"os"
+
+	"github.com/nathan-hello/nat-sync/src/commands"
 )
 
-func CreateClient(cmdQueue chan Command, address string, init chan bool) {
+func CreateClient(address string, init chan bool) {
 	conn, err := net.Dial("tcp", address)
 	if err != nil {
 		fmt.Println("Error connecting to server:", err)
@@ -32,56 +33,42 @@ func CreateClient(cmdQueue chan Command, address string, init chan bool) {
 	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {
 		text := scanner.Text()
+		cmd := commands.Command{Version: commands.CurrentVersion, Creator: "a"}
 		if text == "seek" {
-			asdf := Seek{
-				Location: "00h23m50s",
-				Creator:  "nate",
+			asdf := commands.Seek{
+				Hours: 0,
+				Mins:  23,
+				Secs:  29,
 			}
-			result, err := asdf.Render()
+			cmd.Type = "seek"
+			cmd.Content = asdf
+			bits, err := commands.EncodeCommand(cmd)
 			if err != nil {
-				fmt.Fprintln(conn, err)
-				return
+				fmt.Println("error in seek: ", err)
 			}
-			a, err := json.Marshal(result)
-			if err != nil {
-				fmt.Fprintln(conn, err)
-			} else {
-				fmt.Fprintln(conn, string(a))
-			}
+			fmt.Fprintln(conn, bits)
 		}
 
 		if text == "play" {
-			asdf := Play{
-				Creator: "nate",
-			}
-			result, err := asdf.Render()
+			asdf := commands.Play{}
+			cmd.Type = "play"
+			cmd.Content = asdf
+			bits, err := commands.EncodeCommand(cmd)
 			if err != nil {
-				fmt.Fprintln(conn, err)
-				return
+				fmt.Println("error in play: ", err)
 			}
-			a, err := json.Marshal(result)
-			if err != nil {
-				fmt.Fprintln(conn, err)
-			} else {
-				fmt.Fprintln(conn, string(a))
-			}
+			fmt.Fprintln(conn, bits)
 		}
 
 		if text == "pause" {
-			asdf := Pause{
-				Creator: "nate",
-			}
-			result, err := asdf.Render()
+			asdf := commands.Pause{}
+			cmd.Type = "pause"
+			cmd.Content = asdf
+			bits, err := commands.EncodeCommand(cmd)
 			if err != nil {
-				fmt.Fprintln(conn, err)
-				return
+				fmt.Println("error in pause: ", err)
 			}
-			a, err := json.Marshal(result)
-			if err != nil {
-				fmt.Fprintln(conn, err)
-			} else {
-				fmt.Fprintln(conn, string(a))
-			}
+			fmt.Fprintln(conn, bits)
 		}
 
 		_, err := fmt.Fprintln(conn, text)
