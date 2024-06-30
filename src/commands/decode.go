@@ -17,14 +17,15 @@ func DecodeCommand(bits []byte) (*Command, error) {
 
 	buf := new(bytes.Buffer)
 	buf.Write(bits)
-	fixed := FixedLengthCommand{}
+	cmd := Command{}
 
-	binary.Read(buf, binary.BigEndian, fixed)
-
-	fmt.Printf("fixed after binary read: %#v\n", fixed)
+	err := binary.Read(buf, binary.BigEndian, &cmd)
+	if err != nil {
+		return nil, err
+	}
 
 	var user string
-	for _, v := range fixed.Creator {
+	for _, v := range cmd.Creator {
 		if v > 127 {
 			user = "anon"
 			break
@@ -34,12 +35,9 @@ func DecodeCommand(bits []byte) (*Command, error) {
 		}
 	}
 
-	fmt.Printf("user: %s\n", user)
-
 	var sub SubCommand
-	switch fixed.Type {
+	switch cmd.Head {
 	case SeekHead:
-		fmt.Printf("found seek")
 		sub = &Seek{}
 	case PlayHead:
 		sub = &Play{}
@@ -51,16 +49,11 @@ func DecodeCommand(bits []byte) (*Command, error) {
 	if sub == nil {
 		return nil, utils.ErrNoCmdHeadFound(bits[0])
 	}
+
 	fmt.Printf("con: %#v\n", sub)
-	sub.FromBits(fixed.Content)
+	sub.FromBits(cmd.Content)
 	fmt.Printf("con: %#v\n", sub)
 
-	cmd := Command{
-		Type:    fixed.Type,
-		Version: fixed.Version,
-		Creator: user,
-		Content: sub,
-	}
 	fmt.Printf("command full: %#v\n", cmd)
 
 	return &cmd, nil

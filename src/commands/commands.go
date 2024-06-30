@@ -5,19 +5,19 @@ import "encoding/binary"
 const CurrentVersion = 0000_0001
 
 const (
-	ExitHead     = 0000_0000
-	SeekHead     = 0000_0001
-	PauseHead    = 0000_0010
-	PlayHead     = 0000_0011
-	NewVideoHead = 0000_0100
-	JoinRoomHead = 0000_0101
+	ExitHead     = 1
+	SeekHead     = 2
+	PauseHead    = 3
+	PlayHead     = 4
+	NewVideoHead = 5
+	JoinRoomHead = 6
 )
 
 type Command struct {
-	Type    uint8
+	Head    uint8
 	Version uint16
-	Creator string
-	Content SubCommand
+	Creator [32]byte
+	Content []byte
 }
 
 type SubCommand interface {
