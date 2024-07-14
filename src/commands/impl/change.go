@@ -3,6 +3,7 @@ package impl
 import (
 	"bytes"
 	"encoding/binary"
+	"strconv"
 	"strings"
 
 	"github.com/nathan-hello/nat-sync/src/utils"
@@ -15,6 +16,7 @@ const (
 	ChgImmediate ChangeActions = 2
 )
 
+// TODO: add timestamp string parsing
 type Change struct {
 	Action    ChangeActions
 	Timestamp Seek
@@ -78,7 +80,6 @@ func (c *Change) FromBits(bits []byte) error {
 // Example:
 // ["--Uri=\"asdf.com/cats\"", "--Action=\"immediate\""]
 // ["--Uri=\"file:/home/catlover/kitty.jpeg\"", "--Action=\"append\""]
-// TODO: add timestamp string parsing
 func (c *Change) FromString(s []string) error {
 	for _, v := range s {
 		v = strings.ToLower(v)
@@ -88,6 +89,7 @@ func (c *Change) FromString(s []string) error {
 			flag, _ = strings.CutPrefix(flag, "\"")
 			flag, _ = strings.CutSuffix(flag, "\"")
 			c.Uri = flag
+			c.UriLength = uint32(len(flag))
 		case strings.HasPrefix(v, "--action="):
 			flag, _ := strings.CutPrefix(v, "--action=")
 			flag, _ = strings.CutPrefix(flag, "\"")
@@ -98,8 +100,35 @@ func (c *Change) FromString(s []string) error {
 			case "immediate":
 				c.Action = ChgImmediate
 			default:
-				return utils.ErrBadArgs(s)
+				return utils.ErrBadArgs(append(s, flag))
 			}
+		case strings.HasPrefix(v, "--hours="):
+			flag, _ := strings.CutPrefix(v, "--hours=")
+			flag, _ = strings.CutPrefix(flag, "\"")
+			flag, _ = strings.CutSuffix(flag, "\"")
+			i, err := strconv.ParseUint(flag, 10, 8)
+			if err != nil {
+				return utils.ErrBadArgs(append(s, flag))
+			}
+			c.Timestamp.Hours = uint8(i)
+		case strings.HasPrefix(v, "--mins="):
+			flag, _ := strings.CutPrefix(v, "--mins=")
+			flag, _ = strings.CutPrefix(flag, "\"")
+			flag, _ = strings.CutSuffix(flag, "\"")
+			i, err := strconv.ParseUint(flag, 10, 8)
+			if err != nil {
+				return utils.ErrBadArgs(append(s, flag))
+			}
+			c.Timestamp.Mins = uint8(i)
+		case strings.HasPrefix(v, "--secs="):
+			flag, _ := strings.CutPrefix(v, "--secs=")
+			flag, _ = strings.CutPrefix(flag, "\"")
+			flag, _ = strings.CutSuffix(flag, "\"")
+			i, err := strconv.ParseUint(flag, 10, 8)
+			if err != nil {
+				return utils.ErrBadArgs(append(s, flag))
+			}
+			c.Timestamp.Secs = uint8(i)
 		default:
 			return utils.ErrBadArgs(s)
 		}

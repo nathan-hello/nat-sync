@@ -1,7 +1,6 @@
 package commands
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/nathan-hello/nat-sync/src/commands/impl"
@@ -13,10 +12,6 @@ func CmdFromString(s string) (*Command, error) {
 	parts := strings.Fields(s)
 	var head CmdHead
 	var sub SubCommand
-
-	fmt.Println("text given to cmdfromstring: ", s)
-	fmt.Println("parts: ", parts)
-	fmt.Println("parts[0]: ", parts[0])
 
 	switch strings.ToLower(parts[0]) {
 	case "change":
@@ -45,7 +40,6 @@ func CmdFromString(s string) (*Command, error) {
 		parts = parts[1:]
 	}
 
-	fmt.Println("parts sending to fromstring(): ", parts)
 	err := sub.FromString(parts)
 
 	if err != nil {

@@ -9,7 +9,7 @@ import (
 	"github.com/nathan-hello/nat-sync/src/commands/impl"
 )
 
-func TestCmdStringParsing(t *testing.T) {
+func TestCmdStrings(t *testing.T) {
 	happy := map[string]commands.SubCommand{
 		"change --uri=asdf.com/cats --action=append --hours=23 --mins=51 --secs=12": &impl.Change{Uri: "asdf.com/cats", UriLength: 13, Action: impl.ChgAppend, Timestamp: impl.Seek{Hours: 23, Mins: 51, Secs: 12}},
 		"join   --roomid=34129":                              &impl.Join{RoomId: uint16(34129)},
@@ -33,7 +33,7 @@ func TestCmdStringParsing(t *testing.T) {
 
 }
 
-func TestFromBits(t *testing.T) {
+func TestBits(t *testing.T) {
 	empties := []commands.SubCommand{
 		&impl.Change{},
 		&impl.Join{},

@@ -14,7 +14,7 @@ type Join struct {
 }
 
 func (c *Join) ToBits() ([]byte, error) {
-	bits := []byte{}
+	bits := make([]byte, 16)
 	binary.BigEndian.PutUint16(bits, c.RoomId)
 
 	return bits, nil
@@ -31,12 +31,13 @@ func (c *Join) FromBits(bits []byte) error {
 }
 
 // Example:
-// ["--UserId=834129"]
+// ["--RoomId=34129"]
 func (c *Join) FromString(s []string) error {
 	for _, v := range s {
+		v = strings.ToLower(v)
 		switch {
-		case strings.HasPrefix(v, "--UserId="):
-			flag, _ := strings.CutPrefix(v, "--UserId=")
+		case strings.HasPrefix(v, "--roomid="):
+			flag, _ := strings.CutPrefix(v, "--roomid=")
 			flag, _ = strings.CutPrefix(flag, "\"")
 			flag, _ = strings.CutSuffix(flag, "\"")
 			i, err := strconv.ParseUint(flag, 10, 16)
@@ -44,9 +45,11 @@ func (c *Join) FromString(s []string) error {
 				return utils.ErrBadArgs(s)
 			}
 			c.RoomId = uint16(i)
-		default:
-			return utils.ErrBadArgs(s)
 		}
+	}
+
+	if c.RoomId == 0 {
+		return utils.ErrRequiredArgs("join required arg --roomid=<uint16>")
 	}
 
 	return nil
