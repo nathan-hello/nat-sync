@@ -1,4 +1,4 @@
-package src
+package client
 
 import (
 	"bufio"
@@ -17,6 +17,12 @@ func CreateClient(address string, init chan bool) {
 	}
 	defer conn.Close()
 	fmt.Println("Started client connected to " + address)
+
+	playerInit := make(chan bool)
+	go launchPlayer("mpv", playerInit)
+	<-playerInit
+
+	init <- true
 
 	go func() {
 		reader := bufio.NewReader(conn)
@@ -42,6 +48,7 @@ func CreateClient(address string, init chan bool) {
 		}
 
 		cmd.UserId = creator
+		fmt.Printf("cmd before encodecommand(): %#v\n\n", cmd)
 
 		bits, err := commands.EncodeCommand(cmd)
 		if err != nil {

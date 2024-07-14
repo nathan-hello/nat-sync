@@ -1,4 +1,4 @@
-package src
+package server
 
 import (
 	"bufio"
@@ -43,7 +43,7 @@ func handleConnection(conn net.Conn) {
 			continue
 		}
 
-		fmt.Printf("Received from client: %b\nstring %s", message, string(message))
+		fmt.Printf("Received from client: %b\n", message)
 		dec, err := commands.DecodeCommand(message)
 		if err != nil {
 			fmt.Println("err: ", err)
@@ -51,13 +51,3 @@ func handleConnection(conn net.Conn) {
 		fmt.Printf("%#v\n", dec)
 	}
 }
-
-// send := func(s string) {
-// 	for {
-// 		_, err := fmt.Fprintf(conn, "Message from server: %s\n", s)
-// 		if err != nil {
-// 			fmt.Println("Error sending message:", err)
-// 			return
-// 		}
-// 	}
-// }

@@ -5,13 +5,12 @@ const CurrentVersion = 1
 type CmdHead uint8
 
 const (
-	AppendHead CmdHead = 1
-	ChangeHead CmdHead = 2
-	KickHead   CmdHead = 3
-	JoinHead   CmdHead = 4
-	PauseHead  CmdHead = 5
-	PlayHead   CmdHead = 8
-	SeekHead   CmdHead = 7
+	ChangeHead CmdHead = iota
+	KickHead   CmdHead = iota
+	JoinHead   CmdHead = iota
+	PauseHead  CmdHead = iota
+	PlayHead   CmdHead = iota
+	SeekHead   CmdHead = iota
 )
 
 type Command struct {

@@ -7,7 +7,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/nathan-hello/nat-sync/src"
+	"github.com/nathan-hello/nat-sync/src/client"
+	"github.com/nathan-hello/nat-sync/src/server"
 )
 
 const (
@@ -27,9 +28,9 @@ func main() {
 	_ = args.String("client", "4000", "Create a client to join natsync servers")
 	_ = args.String("server", "4000", "Become a server for natsync clients")
 
-	go src.CreateServer(serverAddr, serverInit)
+	go server.CreateServer(serverAddr, serverInit)
 	<-serverInit
-	go src.CreateClient(clientAddr, clientInit)
+	go client.CreateClient(clientAddr, clientInit)
 	<-clientInit
 
 	signal.Notify(signalListener, syscall.SIGINT, syscall.SIGTERM, syscall.SIGTSTP)

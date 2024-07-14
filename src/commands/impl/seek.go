@@ -9,14 +9,29 @@ import (
 	"github.com/nathan-hello/nat-sync/src/utils"
 )
 
+// uint16 to prevent binary reader
+// from interpreting 1010 (decimal 10) as EOF
 type Seek struct {
-	Hours uint8
-	Mins  uint8
-	Secs  uint8
+	Hours uint16
+	Mins  uint16
+	Secs  uint16
 }
 
 func (c *Seek) ToBits() ([]byte, error) {
-	return []byte{c.Hours, c.Mins, c.Secs}, nil
+	buf := new(bytes.Buffer)
+
+	if err := binary.Write(buf, binary.BigEndian, c.Hours); err != nil {
+		return nil, err
+	}
+	if err := binary.Write(buf, binary.BigEndian, c.Mins); err != nil {
+		return nil, err
+	}
+	if err := binary.Write(buf, binary.BigEndian, c.Secs); err != nil {
+		return nil, err
+	}
+
+	return buf.Bytes(), nil
+
 }
 
 func (c *Seek) FromBits(bits []byte) error {
@@ -48,31 +63,31 @@ func (c *Seek) FromString(s []string) error {
 			flag, _ := strings.CutPrefix(v, "--hours=")
 			flag, _ = strings.CutPrefix(flag, "\"")
 			flag, _ = strings.CutSuffix(flag, "\"")
-			i, err := strconv.ParseUint(flag, 10, 8)
+			i, err := strconv.ParseUint(flag, 10, 16)
 			if err != nil {
 				return utils.ErrBadArgs(s)
 			}
-			c.Hours = uint8(i)
+			c.Hours = uint16(i)
 			init = true
 		case strings.HasPrefix(v, "--mins="):
 			flag, _ := strings.CutPrefix(v, "--mins=")
 			flag, _ = strings.CutPrefix(flag, "\"")
 			flag, _ = strings.CutSuffix(flag, "\"")
-			i, err := strconv.ParseUint(flag, 10, 8)
+			i, err := strconv.ParseUint(flag, 10, 16)
 			if err != nil {
 				return utils.ErrBadArgs(s)
 			}
-			c.Mins = uint8(i)
+			c.Mins = uint16(i)
 			init = true
 		case strings.HasPrefix(v, "--secs="):
 			flag, _ := strings.CutPrefix(v, "--secs=")
 			flag, _ = strings.CutPrefix(flag, "\"")
 			flag, _ = strings.CutSuffix(flag, "\"")
-			i, err := strconv.ParseUint(flag, 10, 8)
+			i, err := strconv.ParseUint(flag, 10, 16)
 			if err != nil {
 				return utils.ErrBadArgs(s)
 			}
-			c.Secs = uint8(i)
+			c.Secs = uint16(i)
 			init = true
 		default:
 			return utils.ErrBadArgs(s)

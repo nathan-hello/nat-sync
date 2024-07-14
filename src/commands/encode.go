@@ -4,16 +4,14 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-
-	"github.com/nathan-hello/nat-sync/src/utils"
 )
 
 func EncodeCommand(cmd *Command) ([]byte, error) {
-	if cmd.Content == nil {
-		return nil, utils.ErrNoContent
-	}
-
 	bits := new(bytes.Buffer)
+
+	if cmd.Sub != nil {
+		cmd.Sub = nil
+	}
 
 	if cmd.Version == 0 {
 		cmd.Version = CurrentVersion

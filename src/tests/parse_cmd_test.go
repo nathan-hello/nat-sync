@@ -1,8 +1,8 @@
 package tests
 
 import (
-	"fmt"
 	"reflect"
+	"slices"
 	"testing"
 
 	"github.com/nathan-hello/nat-sync/src/commands"
@@ -16,11 +16,11 @@ func TestCmdStrings(t *testing.T) {
 		"kick   --userid=2182 --isself=false --hidemsg=true": &impl.Kick{UserId: 2182, IsSelf: false, HideMsg: true},
 		"pause  ":                                &impl.Pause{},
 		"play   ":                                &impl.Play{},
-		"seek   --hours=20 --mins=40 --secs=100": &impl.Seek{Hours: 20, Mins: 40, Secs: 100},
+		"seek   --hours=10 --mins=40 --secs=100": &impl.Seek{Hours: 10, Mins: 40, Secs: 100},
 	}
 
 	for k, v := range happy {
-		// fmt.Println("testing string: ", k)
+		// t.Log("testing string: ", k)
 		cmd, err := commands.CmdFromString(k)
 		if err != nil {
 			t.Fatalf("\nCmdFromString error: %s\nstring: %s", err, k)
@@ -28,7 +28,7 @@ func TestCmdStrings(t *testing.T) {
 		if !reflect.DeepEqual(cmd.Sub, v) {
 			t.Fatalf("\nsubcommand from CmdFromString() does not match test case. \nstring: %s\nresult: %#v\nexpect: %#v", k, cmd.Sub, v)
 		}
-		fmt.Println("string good   : ", k)
+		t.Log("string good   : ", k)
 	}
 
 }
@@ -49,16 +49,16 @@ func TestBits(t *testing.T) {
 		&impl.Kick{UserId: 2182, IsSelf: false, HideMsg: true},
 		&impl.Pause{},
 		&impl.Play{},
-		&impl.Seek{Hours: 20, Mins: 40, Secs: 100},
+		&impl.Seek{Hours: 10},
 	}
 
 	for i, v := range subs {
-		fmt.Printf("testing %#v\n", empties[i])
+		t.Logf("testing %#v\n", empties[i])
 		b, err := v.ToBits()
 		if err != nil {
 			t.Fatalf("err in subs index %d\nerr: %s", i, err)
 		}
-		// fmt.Printf("sub: %#v\ntobits:%#v\n", v, b)
+		// t.Logf("sub: %#v\ntobits:%#v\n", v, b)
 		err = empties[i].FromBits(b)
 		if err != nil {
 			t.Fatalf("err in frombits(): %#v\n", err)
@@ -66,6 +66,58 @@ func TestBits(t *testing.T) {
 		if !reflect.DeepEqual(empties[i], subs[i]) {
 			t.Fatalf("s frombits does not equal expected val\nfrombits result: %#v\nexpected: %#v\n", empties[i], subs[i])
 		}
-		// fmt.Printf("frombits success: %#v\n", empties[i])
+		t.Logf("frombits success: %#v\n", empties[i])
 	}
+}
+
+func assert(test bool, t *testing.T, msg string) {
+	if !test {
+		t.Fatal(msg)
+	}
+}
+
+func TestEncodeCmd(t *testing.T) {
+	subs := map[commands.CmdHead]commands.SubCommand{
+		commands.ChangeHead: &impl.Change{Uri: "asdf.com/cats", UriLength: 13, Action: impl.ChgAppend, Timestamp: impl.Seek{Hours: 23, Mins: 51, Secs: 12}},
+		commands.JoinHead:   &impl.Join{RoomId: uint16(34129)},
+		commands.KickHead:   &impl.Kick{UserId: 2182, IsSelf: false, HideMsg: true},
+		commands.PauseHead:  &impl.Pause{},
+		commands.PlayHead:   &impl.Play{},
+		commands.SeekHead:   &impl.Seek{Hours: 10},
+	}
+
+	for k, v := range subs {
+		cmd := commands.Command{
+			Head:    k,
+			Version: commands.CurrentVersion,
+			UserId:  8231,
+		}
+		bits, err := v.ToBits()
+		if err != nil {
+			t.Fatalf("err tobits(): %s", err)
+		}
+
+		cmd.Content = bits
+		cmdBits, err := commands.EncodeCommand(&cmd)
+		if err != nil {
+			t.Fatalf("err encodecommand(): %s", err)
+		}
+
+		cmd.Sub = v // to verify that it's equal. can't put it before the encode process
+
+		newCmd, err := commands.DecodeCommand(cmdBits)
+		if err != nil {
+			t.Fatalf("err decodecommand(): %s", err)
+		}
+
+		t.Logf("\n\ncmd: %#v\nnewCmd: %#v\n", cmd, newCmd)
+		t.Logf("\n\ncmdSub: %#v\nnewCmd.Sub: %#v\n", cmd.Sub, newCmd.Sub)
+		assert(newCmd.Head == cmd.Head, t, "head no match")
+		assert(newCmd.Version == cmd.Version, t, "version no match")
+		assert(newCmd.UserId == cmd.UserId, t, "userid no match")
+		assert(slices.Equal(newCmd.Content, cmd.Content), t, "content no match")
+		assert(reflect.DeepEqual(newCmd.Sub, cmd.Sub), t, "sub struct no match")
+
+	}
+
 }
