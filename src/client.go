@@ -33,52 +33,22 @@ func CreateClient(address string, init chan bool) {
 	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {
 		text := scanner.Text()
-		var creator [32]byte
-		copy(creator[:], "a")
+		creator := uint16(10126)
 
-		cmd := commands.Command{Version: commands.CurrentVersion, Creator: creator}
-		var bits []byte
-		if text == "seek" {
-			asdf := &commands.Seek{
-				Hours: 0,
-				Mins:  23,
-				Secs:  29,
-			}
-			cmd.Head = commands.SeekHead
-			cmd.Content = asdf.ToBits()
-			bits, err = commands.EncodeCommand(cmd)
-			if err != nil {
-				fmt.Println("error in seek: ", err)
-			}
-
+		cmd, err := commands.CmdFromString(text)
+		if err != nil {
+			fmt.Println(err)
+			continue
 		}
 
-		if text == "play" {
-			asdf := commands.Play{}
-			cmd.Head = commands.PlayHead
-			cmd.Content = asdf.ToBits()
-			bits, err = commands.EncodeCommand(cmd)
-			if err != nil {
-				fmt.Println("error in play: ", err)
-			}
+		cmd.UserId = creator
+
+		bits, err := commands.EncodeCommand(cmd)
+		if err != nil {
+			fmt.Println(err)
+			continue
 		}
-
-		if text == "pause" {
-			asdf := commands.Pause{}
-			cmd.Head = commands.PauseHead
-			cmd.Content = asdf.ToBits()
-			bits, err = commands.EncodeCommand(cmd)
-			if err != nil {
-				fmt.Println("error in pause: ", err)
-			}
-		}
-
-		fmt.Fprintln(conn, string(bits))
-
-		// _, err := fmt.Fprintln(conn, text)
-		// if err != nil {
-		// 	fmt.Println("Error sending message:", err)
-		// 	return
-		// }
+		tosend := string(bits)
+		fmt.Fprintln(conn, tosend)
 	}
 }

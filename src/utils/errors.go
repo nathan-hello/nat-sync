@@ -23,3 +23,19 @@ func ErrFixedContentLength(cmd interface{}, subCmd interface{}) error {
 func ErrNoCmdHeadFound(head byte) error {
 	return fmt.Errorf("cmd head not found from bit: %b", head)
 }
+
+func ErrBadArgs(s []string) error {
+	return fmt.Errorf("err parsing cmd string: %s", s)
+}
+
+func ErrRequiredArgs(msg string) error {
+	return fmt.Errorf("err cmd is missing a required arg: %s", msg)
+}
+
+func ErrNoArgs(msg string) error {
+	return fmt.Errorf("err cmd was given no args but requires them: %s", msg)
+}
+
+func ErrLongString(s []string) error {
+	return fmt.Errorf("err arg is longer than 65535: %s", s)
+}
