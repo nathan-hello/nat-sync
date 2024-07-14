@@ -53,13 +53,13 @@ func DecodeCommand(bits []byte) (*Command, error) {
 		return nil, utils.ErrNoCmdHeadFound(bits[0])
 	}
 
-	fmt.Printf("content before FromBits(): %v\n", cmd.Content)
+	// fmt.Printf("content before FromBits(): %v\n", cmd.Content)
 
 	sub.FromBits(cmd.Content)
 
-	fmt.Printf("con: %#v\n", sub)
+	// fmt.Printf("con: %#v\n", sub)
 
-	fmt.Printf("command full: %#v\n", cmd)
+	// fmt.Printf("command full: %#v\n", cmd)
 
 	cmd.Sub = sub
 

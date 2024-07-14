@@ -13,6 +13,8 @@ type Join struct {
 	RoomId uint16
 }
 
+func (c *Join) IsEchoed() bool { return false }
+
 func (c *Join) ToBits() ([]byte, error) {
 	bits := make([]byte, 16)
 	binary.BigEndian.PutUint16(bits, c.RoomId)
@@ -53,4 +55,8 @@ func (c *Join) FromString(s []string) error {
 	}
 
 	return nil
+}
+
+func (c *Join) ToMpv() (string, error) {
+	return "", nil // not a player command!
 }

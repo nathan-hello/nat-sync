@@ -3,7 +3,6 @@ package commands
 import (
 	"bytes"
 	"encoding/binary"
-	"fmt"
 )
 
 func EncodeCommand(cmd *Command) ([]byte, error) {
@@ -35,7 +34,7 @@ func EncodeCommand(cmd *Command) ([]byte, error) {
 		return nil, err
 	}
 
-	fmt.Printf("decoded bytes: %b ", bits.Bytes())
+	// fmt.Printf("decoded bytes: %b ", bits.Bytes())
 
 	return bits.Bytes(), nil
 }

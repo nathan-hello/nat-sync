@@ -25,4 +25,6 @@ type SubCommand interface {
 	FromString(s []string) error
 	FromBits(bits []byte) error
 	ToBits() ([]byte, error)
+	IsEchoed() bool
+	ToMpv() (string, error)
 }

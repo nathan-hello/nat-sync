@@ -15,6 +15,8 @@ type Kick struct {
 	HideMsg bool
 }
 
+func (c *Kick) IsEchoed() bool { return false }
+
 func (c *Kick) ToBits() ([]byte, error) {
 
 	var bits = new(bytes.Buffer)
@@ -105,4 +107,8 @@ func (c *Kick) FromString(s []string) error {
 	}
 
 	return nil
+}
+
+func (c *Kick) ToMpv() (string, error) {
+	return "", nil // not a player command!
 }

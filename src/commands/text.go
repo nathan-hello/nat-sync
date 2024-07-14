@@ -10,6 +10,11 @@ import (
 // Returns a *Command without UserId field
 func CmdFromString(s string) (*Command, error) {
 	parts := strings.Fields(s)
+
+	if len(parts) == 0 {
+		return nil, nil
+	}
+
 	var head CmdHead
 	var sub SubCommand
 

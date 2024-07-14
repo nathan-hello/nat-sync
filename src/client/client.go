@@ -5,36 +5,63 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"slices"
 
 	"github.com/nathan-hello/nat-sync/src/commands"
 )
 
-func CreateClient(address string, init chan bool) {
-	conn, err := net.Dial("tcp", address)
+type ClientParams struct {
+	ServerAddress string
+	Init          chan bool
+	ToClient      chan commands.Command
+	ToError       chan error
+}
+
+func CreateClient(p ClientParams) {
+	conn, err := net.Dial("tcp", p.ServerAddress)
 	if err != nil {
 		fmt.Println("Error connecting to server:", err)
 		return
 	}
 	defer conn.Close()
-	fmt.Println("Started client connected to " + address)
+	fmt.Println("Started client connected to " + p.ServerAddress)
 
-	playerInit := make(chan bool)
-	go launchPlayer("mpv", playerInit)
-	<-playerInit
-
-	init <- true
+	lp := LaunchParams{
+		Player:     LaunchMpv,
+		SocketPath: "/tmp/nat-sync-mpv-socket",
+		Init:       make(chan bool),
+		ToClient:   p.ToClient,
+		ToError:    p.ToError,
+	}
+	go LaunchPlayer(&lp)
+	<-lp.Init
 
 	go func() {
 		reader := bufio.NewReader(conn)
 		for {
-			message, err := reader.ReadString('\n')
+			message, err := reader.ReadBytes('\n')
 			if err != nil {
 				fmt.Println("Connection closed")
 				return
 			}
-			fmt.Print("Received from server: ", message)
+			fmt.Printf("Received from server: %b\n", message)
+			if slices.Equal(message, []byte("200")) {
+				fmt.Printf("Received OK server: %s\n", message)
+				continue
+			}
+
+			dec, err := commands.DecodeCommand(message)
+			if err != nil {
+				fmt.Println("err: ", err)
+			}
+			fmt.Printf("%#v\n", dec)
+			go func() {
+				fmt.Printf("sending cmd to ToClient: %#v\n", dec)
+				p.ToClient <- *dec
+			}()
 		}
 	}()
+	p.Init <- true
 
 	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {
@@ -48,7 +75,6 @@ func CreateClient(address string, init chan bool) {
 		}
 
 		cmd.UserId = creator
-		fmt.Printf("cmd before encodecommand(): %#v\n\n", cmd)
 
 		bits, err := commands.EncodeCommand(cmd)
 		if err != nil {

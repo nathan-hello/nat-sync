@@ -3,9 +3,11 @@ package impl
 import (
 	"bytes"
 	"encoding/binary"
+	"encoding/json"
 	"strconv"
 	"strings"
 
+	"github.com/nathan-hello/nat-sync/src/commands/impl/players"
 	"github.com/nathan-hello/nat-sync/src/utils"
 )
 
@@ -16,6 +18,8 @@ type Seek struct {
 	Mins  uint16
 	Secs  uint16
 }
+
+func (c *Seek) IsEchoed() bool { return true }
 
 func (c *Seek) ToBits() ([]byte, error) {
 	buf := new(bytes.Buffer)
@@ -99,4 +103,17 @@ func (c *Seek) FromString(s []string) error {
 	}
 
 	return nil
+}
+
+func (c *Seek) ToMpv() (string, error) {
+	asdf := players.MpvJson{}
+
+	asdf.Command = append(asdf.Command, "pause")
+	asdf.Command = append(asdf.Command, "false")
+
+	mpvCmd, err := json.Marshal(asdf)
+	if err != nil {
+		return "", err
+	}
+	return string(mpvCmd), nil
 }
