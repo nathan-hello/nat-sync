@@ -98,7 +98,7 @@ func TestEncodeCmd(t *testing.T) {
 		}
 
 		cmd.Content = bits
-		cmdBits, err := commands.EncodeCommand(&cmd)
+		cmdBits, err := cmd.ToBits()
 		if err != nil {
 			t.Fatalf("err encodecommand(): %s", err)
 		}

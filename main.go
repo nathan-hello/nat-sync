@@ -24,15 +24,12 @@ var (
 	serverInit     = make(chan bool, 1)
 	toClientCmds   = make(chan commands.Command, 5)
 	toServerCmds   = make(chan commands.Command, 5)
-	ToError        = make(chan error, 5)
 )
 
 func main() {
 	args := flag.NewFlagSet("natsync", flag.ExitOnError)
 	_ = args.String("client", "4000", "Create a client to join natsync servers")
 	_ = args.String("server", "4000", "Become a server for natsync clients")
-
-	go printErrs(ToError)
 
 	serverParams := server.ServerParams{
 		ServerAddress: serverAddr,
@@ -46,7 +43,6 @@ func main() {
 		ServerAddress: serverAddr,
 		Init:          clientInit,
 		ToClient:      toClientCmds,
-		ToError:       ToError,
 	}
 	go client.CreateClient(clientParams)
 	<-clientInit
@@ -55,10 +51,4 @@ func main() {
 	signal := <-signalListener
 	fmt.Printf("\nReceived signal %s, exiting\n", signal)
 	cleanupTime <- true
-}
-
-func printErrs(errChan chan error) {
-	for err := range errChan {
-		fmt.Println(err)
-	}
 }

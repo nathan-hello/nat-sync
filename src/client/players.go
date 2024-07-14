@@ -2,12 +2,12 @@ package client
 
 import (
 	"bufio"
-	"fmt"
 	"net"
 	"os/exec"
 	"time"
 
 	"github.com/nathan-hello/nat-sync/src/commands"
+	"github.com/nathan-hello/nat-sync/src/utils"
 )
 
 type LaunchTargets string
@@ -22,7 +22,6 @@ type LaunchParams struct {
 	SocketPath string
 	Init       chan bool
 	ToClient   chan commands.Command
-	ToError    chan error
 }
 
 func LaunchPlayer(p *LaunchParams) error {
@@ -33,14 +32,14 @@ func LaunchPlayer(p *LaunchParams) error {
 		player = "mpv"
 		playerArgs = []string{"--idle", "--force-window", "--input-ipc-server=" + p.SocketPath}
 	}
-	fmt.Printf("starting %s with args: %v\n", player, playerArgs)
+	utils.DebugLogger.Printf("starting %s with args: %v\n", player, playerArgs)
 	cmd = exec.Command(player, playerArgs...)
 
 	err := cmd.Start()
 	if err != nil {
 		return err
 	}
-	fmt.Println(p.Player, "started")
+	utils.DebugLogger.Println(p.Player, "started")
 	go handlePlayerConnection(p)
 
 	cmd.Wait()
@@ -54,34 +53,33 @@ func handlePlayerConnection(p *LaunchParams) {
 	var err error
 
 	for i := 0; i < maxRetries; i++ {
+		time.Sleep(250 * time.Millisecond)
 		conn, err = net.Dial("unix", p.SocketPath)
 		if err == nil {
 			break
 		}
-		fmt.Printf("Attempt %d: error connecting to socket: %v\n", i+1, err)
-		time.Sleep(500 * time.Millisecond) // Wait before retrying
 	}
 
 	if err != nil {
-		p.ToError <- fmt.Errorf("error connecting to socket after %d retries: %w", maxRetries, err)
+		utils.ErrorLogger.Printf("error connecting to socket after %d retries: %s", maxRetries, err)
 		return
 	}
 	defer conn.Close()
 
 	go readResponses(conn, p)
 
-	fmt.Printf("player is ready for cmds")
+	utils.DebugLogger.Printf("player is ready for cmds\n")
 	p.Init <- true
 	for cmd := range p.ToClient {
-		fmt.Printf("player received cmd on ToClient chan: %#v\n", cmd)
 		mpvStr, err := cmd.Sub.ToMpv()
 		if err != nil {
-			p.ToError <- err
+			utils.ErrorLogger.Printf("error parsing command to player format. cmd: %#v err: %s", cmd.Sub, err)
 			break
 		}
+		utils.DebugLogger.Printf("sending cmd to player. cmd: %s", mpvStr)
 		_, err = conn.Write([]byte(mpvStr + "\n"))
 		if err != nil {
-			p.ToError <- err
+			utils.ErrorLogger.Printf("error sending command to player socket. cmd: %#v err: %s", cmd.Sub, err)
 			break
 		}
 	}
@@ -92,9 +90,9 @@ func readResponses(conn net.Conn, p *LaunchParams) {
 	for {
 		response, err := reader.ReadString('\n')
 		if err != nil {
-			p.ToError <- fmt.Errorf("error reading from socket: %w", err)
+			utils.ErrorLogger.Printf("error reading from socket: %s", err)
 			break
 		}
-		fmt.Printf("Response from MPV: %s\n", response)
+		utils.NoticeLogger.Printf("Response from MPV: %s\n", response)
 	}
 }
