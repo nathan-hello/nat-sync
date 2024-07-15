@@ -1,11 +1,5 @@
 package impl
 
-import (
-	"encoding/json"
-
-	"github.com/nathan-hello/nat-sync/src/commands/impl/players"
-)
-
 type Pause struct {
 }
 
@@ -26,14 +20,5 @@ func (c *Pause) FromString(s []string) error {
 }
 
 func (c *Pause) ToMpv() (string, error) {
-	asdf := players.MpvJson{}
-
-	asdf.Command = append(asdf.Command, "pause")
-	asdf.Command = append(asdf.Command, "true")
-
-	mpvCmd, err := json.Marshal(asdf)
-	if err != nil {
-		return "", err
-	}
-	return string(mpvCmd), nil
+	return `{"command":["set_property","pause",true]}`, nil
 }

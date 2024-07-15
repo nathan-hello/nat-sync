@@ -7,7 +7,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/nathan-hello/nat-sync/src/commands/impl/players"
 	"github.com/nathan-hello/nat-sync/src/utils"
 )
 
@@ -106,7 +105,7 @@ func (c *Seek) FromString(s []string) error {
 }
 
 func (c *Seek) ToMpv() (string, error) {
-	asdf := players.MpvJson{}
+	asdf := MpvJson{}
 
 	asdf.Command = append(asdf.Command, "pause")
 	asdf.Command = append(asdf.Command, "false")

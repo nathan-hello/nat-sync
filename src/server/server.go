@@ -2,7 +2,6 @@ package server
 
 import (
 	"bufio"
-	"fmt"
 	"net"
 
 	"github.com/nathan-hello/nat-sync/src/commands"
@@ -18,7 +17,7 @@ type ServerParams struct {
 func CreateServer(p ServerParams) {
 	listener, err := net.Listen("tcp", p.ServerAddress)
 	if err != nil {
-		fmt.Println("Error starting server:", err)
+		utils.ErrorLogger.Println("starting server:", err)
 		return
 	}
 	defer listener.Close()
@@ -28,7 +27,7 @@ func CreateServer(p ServerParams) {
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
-			fmt.Println("Error accepting connection:", err)
+			utils.ErrorLogger.Println("accepting connection:", err)
 			continue
 		}
 		go receive(conn, p)
@@ -43,7 +42,7 @@ func receive(conn net.Conn, p ServerParams) {
 	for {
 		message, err := reader.ReadBytes('\n')
 		if err != nil {
-			utils.ErrorLogger.Println("Connection closed")
+			utils.ErrorLogger.Println("connection closed")
 			return
 		}
 
@@ -51,12 +50,12 @@ func receive(conn net.Conn, p ServerParams) {
 
 		dec, err := commands.DecodeCommand(message)
 		if err != nil {
-			utils.ErrorLogger.Println("err: ", err)
+			utils.ErrorLogger.Printf("can't decode cmd. err: %s\ncmd: %#v\n: ", message, err)
 		}
 		// utils.DebugLogger.Printf("accepted cmd: %v\n", dec)
 
 		p.ToServer <- *dec
-		// utils.DebugLogger.Printf("server: sent decoded cmd to channel\n")
+		utils.DebugLogger.Printf("server: sent decoded cmd to channel\n")
 
 	}
 }
@@ -67,7 +66,7 @@ func transmit(conn net.Conn, p ServerParams) {
 		if cmd.Sub.IsEchoed() {
 			r, err := cmd.ToBits() // \n is put at end here
 			if err != nil {
-				utils.ErrorLogger.Println("Error encoding command:", err)
+				utils.ErrorLogger.Printf("encoding command. cmd: %#v\n err:%s", cmd, err)
 				continue
 			}
 			response = r

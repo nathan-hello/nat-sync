@@ -7,7 +7,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/nathan-hello/nat-sync/src/commands/impl/players"
 	"github.com/nathan-hello/nat-sync/src/utils"
 )
 
@@ -141,7 +140,7 @@ func (c *Change) FromString(s []string) error {
 }
 
 func (c *Change) ToMpv() (string, error) {
-	asdf := players.MpvJson{}
+	asdf := MpvJson{}
 
 	asdf.Command = append(asdf.Command, "loadfile")
 	asdf.Command = append(asdf.Command, c.Uri)

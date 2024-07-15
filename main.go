@@ -8,8 +8,10 @@ import (
 	"syscall"
 
 	"github.com/nathan-hello/nat-sync/src/client"
+	"github.com/nathan-hello/nat-sync/src/client/players"
 	"github.com/nathan-hello/nat-sync/src/commands"
 	"github.com/nathan-hello/nat-sync/src/server"
+	"github.com/nathan-hello/nat-sync/src/utils"
 )
 
 const (
@@ -31,6 +33,8 @@ func main() {
 	_ = args.String("client", "4000", "Create a client to join natsync servers")
 	_ = args.String("server", "4000", "Become a server for natsync clients")
 
+	utils.InitLogger()
+
 	serverParams := server.ServerParams{
 		ServerAddress: serverAddr,
 		Init:          serverInit,
@@ -44,7 +48,13 @@ func main() {
 		Init:          clientInit,
 		ToClient:      toClientCmds,
 	}
-	go client.CreateClient(clientParams)
+
+	lp := players.LaunchParams{
+		Player:   players.LaunchMpv,
+		Init:     make(chan bool),
+		ToClient: toClientCmds,
+	}
+	go client.CreateClient(&clientParams, &lp)
 	<-clientInit
 
 	signal.Notify(signalListener, syscall.SIGINT, syscall.SIGTERM, syscall.SIGTSTP)
