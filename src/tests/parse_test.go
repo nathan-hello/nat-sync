@@ -10,6 +10,7 @@ import (
 )
 
 func TestCmdStrings(t *testing.T) {
+	initEnvironment()
 	happy := map[string]commands.SubCommand{
 		"change --uri=asdf.com/cats --action=append --hours=23 --mins=51 --secs=12": &impl.Change{Uri: "asdf.com/cats", UriLength: 13, Action: impl.ChgAppend, Timestamp: impl.Seek{Hours: 23, Mins: 51, Secs: 12}},
 		"join   --roomid=34129":                              &impl.Join{RoomId: uint16(34129)},
@@ -34,6 +35,7 @@ func TestCmdStrings(t *testing.T) {
 }
 
 func TestBits(t *testing.T) {
+	initEnvironment()
 	empties := []commands.SubCommand{
 		&impl.Change{},
 		&impl.Join{},
@@ -77,6 +79,7 @@ func assert(test bool, t *testing.T, msg string) {
 }
 
 func TestEncodeCmd(t *testing.T) {
+	initEnvironment()
 	subs := map[commands.CmdHead]commands.SubCommand{
 		commands.ChangeHead: &impl.Change{Uri: "asdf.com/cats", UriLength: 13, Action: impl.ChgAppend, Timestamp: impl.Seek{Hours: 23, Mins: 51, Secs: 12}},
 		commands.JoinHead:   &impl.Join{RoomId: uint16(34129)},

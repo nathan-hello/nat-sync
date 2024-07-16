@@ -16,7 +16,7 @@ type Join struct {
 func (c *Join) IsEchoed() bool { return false }
 
 func (c *Join) ToBits() ([]byte, error) {
-	bits := make([]byte, 16)
+	bits := make([]byte, 2)
 	binary.BigEndian.PutUint16(bits, c.RoomId)
 
 	return bits, nil

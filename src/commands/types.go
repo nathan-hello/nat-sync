@@ -18,20 +18,20 @@ const (
 	SeekHead   CmdHead = iota
 )
 
+type MsgType uint8
+
+const (
+	MsgCommand MsgType = iota
+)
+
 type Command struct {
+	Length  uint16
+	Type    MsgType
 	Head    CmdHead
 	Version uint16
 	UserId  uint16
 	Content []byte
 	Sub     SubCommand
-}
-
-type SubCommand interface {
-	FromString(s []string) error
-	FromBits(bits []byte) error
-	ToBits() ([]byte, error)
-	IsEchoed() bool
-	ToMpv() (string, error)
 }
 
 func (cmd *Command) ToBits() ([]byte, error) {
@@ -40,12 +40,18 @@ func (cmd *Command) ToBits() ([]byte, error) {
 	if cmd.Sub != nil {
 		cmd.Sub = nil
 	}
-
 	if cmd.Version == 0 {
 		cmd.Version = CurrentVersion
 	}
+	if cmd.Type == 0 {
+		cmd.Type = MsgCommand
+	}
 
-	err := binary.Write(bits, binary.BigEndian, cmd.Head)
+	err := binary.Write(bits, binary.BigEndian, cmd.Type)
+	if err != nil {
+		return nil, err
+	}
+	err = binary.Write(bits, binary.BigEndian, cmd.Head)
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +69,27 @@ func (cmd *Command) ToBits() ([]byte, error) {
 		return nil, err
 	}
 
-	// utils.DebugLogger.Printf("decoded bytes: %b ", bits.Bytes())
+	cmd.Length = uint16(len(bits.Bytes()))
+	finalBits := new(bytes.Buffer)
 
-	return bits.Bytes(), nil
+	err = binary.Write(finalBits, binary.BigEndian, cmd.Length)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = finalBits.Write(bits.Bytes())
+	if err != nil {
+		return nil, err
+	}
+
+	// utils.DebugLogger.Printf("decoded bytes: %b ", finalBits.Bytes())
+	return finalBits.Bytes(), nil
+}
+
+type SubCommand interface {
+	FromString(s []string) error
+	FromBits(bits []byte) error
+	ToBits() ([]byte, error)
+	IsEchoed() bool
+	ToMpv() (string, error)
 }

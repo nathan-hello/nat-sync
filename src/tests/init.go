@@ -1,11 +1,8 @@
-package main
+package tests
 
 import (
-	"flag"
-	"fmt"
+	"io"
 	"os"
-	"os/signal"
-	"syscall"
 
 	"github.com/nathan-hello/nat-sync/src/client"
 	"github.com/nathan-hello/nat-sync/src/client/players"
@@ -15,8 +12,8 @@ import (
 )
 
 const (
-	clientAddr = ":1412"
-	serverAddr = ":1412"
+	clientAddr = ":1413"
+	serverAddr = ":1413"
 )
 
 var (
@@ -24,42 +21,44 @@ var (
 	cleanupTime    = make(chan bool, 1)
 	clientInit     = make(chan bool, 1)
 	serverInit     = make(chan bool, 1)
+	playerInit     = make(chan bool, 1)
 	toClientCmds   = make(chan commands.Command, 5)
 	toServerCmds   = make(chan commands.Command, 5)
 )
 
-func main() {
-	args := flag.NewFlagSet("natsync", flag.ExitOnError)
-	_ = args.String("client", "4000", "Create a client to join natsync servers")
-	_ = args.String("server", "4000", "Become a server for natsync clients")
-
+func initEnvironment() {
 	utils.InitLogger()
+}
 
+func initClient(r io.Reader) {
+	clientParams := client.ClientParams{
+		ServerAddress: serverAddr,
+		Init:          clientInit,
+		ToClient:      toClientCmds,
+		InputReader:   r,
+	}
+
+	lp := players.LaunchParams{
+		Player:   players.NoLaunchy,
+		Init:     playerInit,
+		ToClient: toClientCmds,
+	}
+	go client.CreateClient(&clientParams, &lp)
+}
+
+func initServer() {
 	serverParams := server.ServerParams{
 		ServerAddress: serverAddr,
 		Init:          serverInit,
 		ToServer:      toServerCmds,
 	}
 	go server.CreateServer(serverParams)
+}
+
+func initAll(r io.Reader) {
+	initEnvironment()
+	go initServer()
 	<-serverInit
-
-	clientParams := client.ClientParams{
-		ServerAddress: serverAddr,
-		Init:          clientInit,
-		ToClient:      toClientCmds,
-		InputReader:   os.Stdin,
-	}
-
-	lp := players.LaunchParams{
-		Player:   players.LaunchMpv,
-		Init:     make(chan bool),
-		ToClient: toClientCmds,
-	}
-	go client.CreateClient(&clientParams, &lp)
+	go initClient(r)
 	<-clientInit
-
-	signal.Notify(signalListener, syscall.SIGINT, syscall.SIGTERM, syscall.SIGTSTP)
-	signal := <-signalListener
-	fmt.Printf("\nReceived signal %s, exiting\n", signal)
-	cleanupTime <- true
 }

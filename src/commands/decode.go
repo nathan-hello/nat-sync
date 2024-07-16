@@ -14,6 +14,14 @@ func DecodeCommand(bits []byte) (*Command, error) {
 
 	// Read the fixed-length part of the Command struct
 	var cmd Command
+	if err := binary.Read(buf, binary.BigEndian, &cmd.Length); err != nil {
+		utils.DebugLogger.Println("binary.Read failed (Length):", err)
+		return nil, err
+	}
+	if err := binary.Read(buf, binary.BigEndian, &cmd.Type); err != nil {
+		utils.DebugLogger.Println("binary.Read failed (Type):", err)
+		return nil, err
+	}
 	if err := binary.Read(buf, binary.BigEndian, &cmd.Head); err != nil {
 		utils.DebugLogger.Println("binary.Read failed (Head):", err)
 		return nil, err
@@ -50,18 +58,13 @@ func DecodeCommand(bits []byte) (*Command, error) {
 	case SeekHead:
 		sub = &impl.Seek{}
 	default:
-		return nil, utils.ErrNoCmdHeadFound(bits[0])
+		return nil, utils.ErrNoCmdHeadFound(uint8(cmd.Head))
 	}
 
-	// utils.DebugLogger.Printf("content before FromBits(): %v\n", cmd.Content)
-
 	sub.FromBits(cmd.Content)
-
-	// utils.DebugLogger.Printf("con: %#v\n", sub)
-
-	// utils.DebugLogger.Printf("command full: %#v\n", cmd)
-
 	cmd.Sub = sub
+
+	// utils.DebugLogger.Printf("decoded cmd: %#v\n", cmd)
 
 	return &cmd, nil
 }

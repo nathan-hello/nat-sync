@@ -2,10 +2,8 @@ package client
 
 import (
 	"bufio"
-	"fmt"
 	"io"
 	"net"
-	"os"
 
 	"github.com/nathan-hello/nat-sync/src/client/players"
 	"github.com/nathan-hello/nat-sync/src/commands"
@@ -16,6 +14,7 @@ type ClientParams struct {
 	ServerAddress string
 	Init          chan bool
 	ToClient      chan commands.Command
+	InputReader   io.Reader
 }
 
 func CreateClient(p *ClientParams, lp *players.LaunchParams) {
@@ -30,38 +29,37 @@ func CreateClient(p *ClientParams, lp *players.LaunchParams) {
 	go launchPlayer(lp)
 	<-lp.Init
 
+	go transmit(conn, p)
 	p.Init <- true
-	go receive(conn, p)
 
-	transmit(conn, os.Stdin)
+	receive(conn, p)
 
 }
 
 func receive(conn net.Conn, p *ClientParams) {
 	reader := bufio.NewReader(conn)
 	for {
-		message, err := reader.ReadBytes('\n')
+		cmdBits, err := utils.ConnRxCommand(reader)
 		if err != nil {
-			utils.ErrorLogger.Println("Connection closed")
-			return
+			utils.ErrorLogger.Println(err)
+		}
+		dec, err := commands.DecodeCommand(cmdBits)
+		if err != nil {
+			utils.ErrorLogger.Println(err)
 		}
 
-		dec, err := commands.DecodeCommand(message)
-		if err != nil {
-			utils.ErrorLogger.Println("err: ", err)
-		}
-
-		utils.DebugLogger.Printf("sending cmd to ToClient: %#v\n", dec)
 		p.ToClient <- *dec
-		utils.DebugLogger.Printf("sent cmd to ToClient: %#v\n", dec)
+		utils.DebugLogger.Printf("server: sent decoded cmd to channel\n")
 	}
 }
 
-func transmit(conn net.Conn, reader io.Reader) {
-	scanner := bufio.NewScanner(reader)
+func transmit(conn net.Conn, p *ClientParams) {
+	scanner := bufio.NewScanner(p.InputReader)
 	for scanner.Scan() { // this blocks the terminal
 		text := scanner.Text()
 		creator := uint16(10126)
+
+		utils.DebugLogger.Printf("new reader text: %s\n", text)
 
 		cmd, err := commands.CmdFromString(text)
 		if err != nil {
@@ -73,16 +71,20 @@ func transmit(conn net.Conn, reader io.Reader) {
 
 		bits, err := cmd.ToBits()
 		if err != nil {
-			utils.ErrorLogger.Println("err in cmd.ToBits() in client transmit. err: ", err)
+			utils.ErrorLogger.Println("cmd.ToBits() in client transmit. err: ", err)
 			continue
 		}
-		tosend := string(bits)
-		fmt.Fprintln(conn, tosend)
+		utils.DebugLogger.Printf("client sending bits: %b, length: %d\n", bits, len(bits))
+		_, err = conn.Write(bits)
+		if err != nil {
+			utils.ErrorLogger.Printf("client writing bits failed. bits: %b\n", bits)
+		}
 	}
 }
 
 func launchPlayer(p *players.LaunchParams) error {
-	if p.Player == "mpv" {
+	switch p.Player {
+	case players.LaunchMpv:
 		mpv := players.NewMpv()
 		cmd := mpv.GetLaunchCmd()
 
@@ -93,6 +95,12 @@ func launchPlayer(p *players.LaunchParams) error {
 
 		go mpv.Connect(p)
 		cmd.Wait()
+	case players.LaunchVlc:
+		p.Init <- true // init is usually handled after connection to player is successful
+		return utils.ErrNotImplemented("vlc")
+	case players.NoLaunchy:
+		p.Init <- true // init is usually handled after connection to player is successful
+		return nil
 	}
 
 	return nil

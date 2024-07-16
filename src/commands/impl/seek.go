@@ -11,11 +11,11 @@ import (
 )
 
 // uint16 to prevent binary reader
-// from interpreting 1010 (decimal 10) as EOF
+// from interpreting 1010 (decimal 10) as \n
 type Seek struct {
-	Hours uint16
-	Mins  uint16
-	Secs  uint16
+	Hours uint8
+	Mins  uint8
+	Secs  uint8
 }
 
 func (c *Seek) IsEchoed() bool { return true }
@@ -70,7 +70,7 @@ func (c *Seek) FromString(s []string) error {
 			if err != nil {
 				return utils.ErrBadArgs(s)
 			}
-			c.Hours = uint16(i)
+			c.Hours = uint8(i)
 			init = true
 		case strings.HasPrefix(v, "--mins="):
 			flag, _ := strings.CutPrefix(v, "--mins=")
@@ -80,7 +80,7 @@ func (c *Seek) FromString(s []string) error {
 			if err != nil {
 				return utils.ErrBadArgs(s)
 			}
-			c.Mins = uint16(i)
+			c.Mins = uint8(i)
 			init = true
 		case strings.HasPrefix(v, "--secs="):
 			flag, _ := strings.CutPrefix(v, "--secs=")
@@ -90,7 +90,7 @@ func (c *Seek) FromString(s []string) error {
 			if err != nil {
 				return utils.ErrBadArgs(s)
 			}
-			c.Secs = uint16(i)
+			c.Secs = uint8(i)
 			init = true
 		default:
 			return utils.ErrBadArgs(s)

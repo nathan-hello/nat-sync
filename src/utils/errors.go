@@ -20,7 +20,7 @@ func ErrFixedContentLength(cmd interface{}, subCmd interface{}) error {
 	return fmt.Errorf("content is greater than 65535 bits, full command: %#v, content: %#v", cmd, subCmd)
 }
 
-func ErrNoCmdHeadFound(head byte) error {
+func ErrNoCmdHeadFound(head uint8) error {
 	return fmt.Errorf("cmd head not found from bit: %b", head)
 }
 
@@ -38,4 +38,8 @@ func ErrNoArgs(msg string) error {
 
 func ErrLongString(s []string) error {
 	return fmt.Errorf("err arg is longer than 65535: %s", s)
+}
+
+func ErrNotImplemented(s string) error {
+	return fmt.Errorf("feature is not implemented yet: %s", s)
 }

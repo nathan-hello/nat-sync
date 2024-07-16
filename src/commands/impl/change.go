@@ -112,7 +112,7 @@ func (c *Change) FromString(s []string) error {
 			if err != nil {
 				return utils.ErrBadArgs(append(s, flag))
 			}
-			c.Timestamp.Hours = uint16(i)
+			c.Timestamp.Hours = uint8(i)
 		case strings.HasPrefix(v, "--mins="):
 			flag, _ := strings.CutPrefix(v, "--mins=")
 			flag, _ = strings.CutPrefix(flag, "\"")
@@ -121,7 +121,7 @@ func (c *Change) FromString(s []string) error {
 			if err != nil {
 				return utils.ErrBadArgs(append(s, flag))
 			}
-			c.Timestamp.Mins = uint16(i)
+			c.Timestamp.Mins = uint8(i)
 		case strings.HasPrefix(v, "--secs="):
 			flag, _ := strings.CutPrefix(v, "--secs=")
 			flag, _ = strings.CutPrefix(flag, "\"")
@@ -130,7 +130,7 @@ func (c *Change) FromString(s []string) error {
 			if err != nil {
 				return utils.ErrBadArgs(append(s, flag))
 			}
-			c.Timestamp.Secs = uint16(i)
+			c.Timestamp.Secs = uint8(i)
 		default:
 			return utils.ErrBadArgs(s)
 		}

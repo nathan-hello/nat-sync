@@ -20,7 +20,7 @@ func CreateServer(p ServerParams) {
 		utils.ErrorLogger.Println("starting server:", err)
 		return
 	}
-	defer listener.Close()
+	defer listener.Close() // the for loop below means this will never run
 
 	p.Init <- true
 	utils.DebugLogger.Println("Started server at " + p.ServerAddress)
@@ -37,26 +37,20 @@ func CreateServer(p ServerParams) {
 
 func receive(conn net.Conn, p ServerParams) {
 	defer conn.Close()
+
 	reader := bufio.NewReader(conn)
-
 	for {
-		message, err := reader.ReadBytes('\n')
+		cmdBits, err := utils.ConnRxCommand(reader)
 		if err != nil {
-			utils.ErrorLogger.Println("connection closed")
-			return
+			utils.ErrorLogger.Println(err)
 		}
-
-		// utils.DebugLogger.Printf("server got msg: %v\n", message)
-
-		dec, err := commands.DecodeCommand(message)
+		dec, err := commands.DecodeCommand(cmdBits)
 		if err != nil {
-			utils.ErrorLogger.Printf("can't decode cmd. err: %s\ncmd: %#v\n: ", message, err)
+			utils.ErrorLogger.Println(err)
 		}
-		// utils.DebugLogger.Printf("accepted cmd: %v\n", dec)
 
 		p.ToServer <- *dec
 		utils.DebugLogger.Printf("server: sent decoded cmd to channel\n")
-
 	}
 }
 
@@ -74,7 +68,7 @@ func transmit(conn net.Conn, p ServerParams) {
 			response = []byte("200\n")
 		}
 
-		// utils.DebugLogger.Printf("Sending bits: %b\n", response)
+		utils.DebugLogger.Printf("Sending bits: %b\n", response)
 		conn.Write(response)
 	}
 }

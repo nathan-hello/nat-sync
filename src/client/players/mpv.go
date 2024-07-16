@@ -13,6 +13,7 @@ import (
 type LaunchTargets string
 
 const (
+	NoLaunchy LaunchTargets = ""
 	LaunchMpv LaunchTargets = "mpv"
 	LaunchVlc LaunchTargets = "vlc"
 )
