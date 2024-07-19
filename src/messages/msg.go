@@ -60,11 +60,9 @@ func WaitReader(reader io.Reader) (Message, error) {
 		return nil, fmt.Errorf("bytes read: %d, expected: %d", n, length)
 	}
 
-	msgWithLen := []byte{}
-	msgWithLen = append(msgWithLen, lengthBytes...)
-	msgWithLen = append(msgWithLen, message...)
-
-	asdf, err := New(msgWithLen)
+	// concat the two slices, putting length in the beginning
+	m := append(append([]byte{}, lengthBytes...), message...)
+	asdf, err := New(m)
 	if err != nil {
 		return nil, err
 	}
