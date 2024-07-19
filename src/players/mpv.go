@@ -62,8 +62,8 @@ func (v *mpv) connect() {
 }
 
 func (v *mpv) transmit(conn net.Conn) {
-	for v := range v.ToPlayer {
-		switch msg := v.(type) {
+	for m := range v.ToPlayer {
+		switch msg := m.(type) {
 		case *commands.Command:
 			mpvStr, err := msg.Sub.ToMpv()
 			if err != nil {
@@ -76,9 +76,6 @@ func (v *mpv) transmit(conn net.Conn) {
 				utils.ErrorLogger.Printf("sending command to player socket. cmd: %#v err: %s", msg.Sub, err)
 				break
 			}
-			// TODO: handle acks?
-		default:
-			continue
 		}
 	}
 }
@@ -96,6 +93,7 @@ func (v *mpv) receive(conn net.Conn) {
 		utils.NoticeLogger.Printf("mpv response: %s\n", response)
 	}
 }
+
 func (p *mpv) AppendQueue(cmd messages.Message) {
 	p.ToPlayer <- cmd
 }

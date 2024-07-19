@@ -8,3 +8,11 @@ const (
 	MsgCommand MsgType = iota
 	MsgAck     MsgType = iota
 )
+
+type PlayerTargets string
+
+const (
+	TargetTest PlayerTargets = ""
+	TargetMpv  PlayerTargets = "mpv"
+	TargetVlc  PlayerTargets = "vlc"
+)

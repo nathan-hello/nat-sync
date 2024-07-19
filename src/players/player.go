@@ -8,14 +8,6 @@ import (
 	"github.com/nathan-hello/nat-sync/src/utils"
 )
 
-type PlayerTargets string
-
-const (
-	Test PlayerTargets = ""
-	Mpv  PlayerTargets = "mpv"
-	Vlc  PlayerTargets = "vlc"
-)
-
 type Player interface {
 	launch() error
 	connect()
@@ -25,9 +17,9 @@ type Player interface {
 	AppendQueue(messages.Message)
 }
 
-func New(p PlayerTargets) (Player, error) {
+func New(p utils.PlayerTargets) (Player, error) {
 	switch p {
-	case Mpv:
+	case utils.TargetMpv:
 		mpv := newMpv()
 
 		err := mpv.launch()
@@ -38,9 +30,9 @@ func New(p PlayerTargets) (Player, error) {
 		go mpv.connect()
 
 		return mpv, nil
-	case Vlc:
+	case utils.TargetVlc:
 		return nil, utils.ErrNotImplemented("vlc")
-	case Test:
+	case utils.TargetTest:
 		return nil, nil
 	}
 

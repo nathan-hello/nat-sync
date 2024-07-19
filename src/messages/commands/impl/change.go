@@ -24,36 +24,11 @@ type Change struct {
 	Uri       string
 }
 
-func (c *Change) IsEchoed() bool { return true }
+func (c *Change) ExecuteClient() ([]byte, error) { return nil, nil }
+func (c *Change) ExecuteServer() ([]byte, error) { return nil, nil }
+func (c *Change) IsEchoed() bool                 { return true }
 
-func (c *Change) ToBits() ([]byte, error) {
-
-	var bits = new(bytes.Buffer)
-
-	if err := binary.Write(bits, binary.BigEndian, c.Action); err != nil {
-		return nil, err
-	}
-
-	t, err := c.Timestamp.ToBits()
-	if err != nil {
-		return nil, err
-	}
-
-	if err := binary.Write(bits, binary.BigEndian, t); err != nil {
-		return nil, err
-	}
-
-	if err := binary.Write(bits, binary.BigEndian, c.UriLength); err != nil {
-		return nil, err
-	}
-	if err := binary.Write(bits, binary.BigEndian, []byte(c.Uri)); err != nil {
-		return nil, err
-	}
-
-	return bits.Bytes(), nil
-}
-
-func (c *Change) FromBits(bits []byte) error {
+func (c *Change) NewFromBits(bits []byte) error {
 	buf := bytes.NewReader(bits)
 
 	if err := binary.Read(buf, binary.BigEndian, &c.Action); err != nil {
@@ -80,20 +55,20 @@ func (c *Change) FromBits(bits []byte) error {
 }
 
 // Example:
-// ["--Uri=\"asdf.com/cats\"", "--Action=\"immediate\""]
-// ["--Uri=\"file:/home/catlover/kitty.jpeg\"", "--Action=\"append\""]
-func (c *Change) FromString(s []string) error {
+// ["Uri=\"asdf.com/cats\"", "--Action=\"immediate\""]
+// ["Uri=\"file:/home/catlover/kitty.jpeg\"", "--Action=\"append\""]
+func (c *Change) NewFromString(s []string) error {
 	for _, v := range s {
 		v = strings.ToLower(v)
 		switch {
-		case strings.HasPrefix(v, "--uri="):
-			flag, _ := strings.CutPrefix(v, "--uri=")
+		case strings.HasPrefix(v, "uri="):
+			flag, _ := strings.CutPrefix(v, "uri=")
 			flag, _ = strings.CutPrefix(flag, "\"")
 			flag, _ = strings.CutSuffix(flag, "\"")
 			c.Uri = flag
 			c.UriLength = uint32(len(flag))
-		case strings.HasPrefix(v, "--action="):
-			flag, _ := strings.CutPrefix(v, "--action=")
+		case strings.HasPrefix(v, "action="):
+			flag, _ := strings.CutPrefix(v, "action=")
 			flag, _ = strings.CutPrefix(flag, "\"")
 			flag, _ = strings.CutSuffix(flag, "\"")
 			switch strings.ToLower(flag) {
@@ -104,8 +79,8 @@ func (c *Change) FromString(s []string) error {
 			default:
 				return utils.ErrBadArgs(append(s, flag))
 			}
-		case strings.HasPrefix(v, "--hours="):
-			flag, _ := strings.CutPrefix(v, "--hours=")
+		case strings.HasPrefix(v, "hours="):
+			flag, _ := strings.CutPrefix(v, "hours=")
 			flag, _ = strings.CutPrefix(flag, "\"")
 			flag, _ = strings.CutSuffix(flag, "\"")
 			i, err := strconv.ParseUint(flag, 10, 8)
@@ -113,8 +88,8 @@ func (c *Change) FromString(s []string) error {
 				return utils.ErrBadArgs(append(s, flag))
 			}
 			c.Timestamp.Hours = uint8(i)
-		case strings.HasPrefix(v, "--mins="):
-			flag, _ := strings.CutPrefix(v, "--mins=")
+		case strings.HasPrefix(v, "mins="):
+			flag, _ := strings.CutPrefix(v, "mins=")
 			flag, _ = strings.CutPrefix(flag, "\"")
 			flag, _ = strings.CutSuffix(flag, "\"")
 			i, err := strconv.ParseUint(flag, 10, 8)
@@ -122,8 +97,8 @@ func (c *Change) FromString(s []string) error {
 				return utils.ErrBadArgs(append(s, flag))
 			}
 			c.Timestamp.Mins = uint8(i)
-		case strings.HasPrefix(v, "--secs="):
-			flag, _ := strings.CutPrefix(v, "--secs=")
+		case strings.HasPrefix(v, "secs="):
+			flag, _ := strings.CutPrefix(v, "secs=")
 			flag, _ = strings.CutPrefix(flag, "\"")
 			flag, _ = strings.CutSuffix(flag, "\"")
 			i, err := strconv.ParseUint(flag, 10, 8)
@@ -137,6 +112,33 @@ func (c *Change) FromString(s []string) error {
 	}
 
 	return nil
+}
+
+func (c *Change) ToBits() ([]byte, error) {
+
+	var bits = new(bytes.Buffer)
+
+	if err := binary.Write(bits, binary.BigEndian, c.Action); err != nil {
+		return nil, err
+	}
+
+	t, err := c.Timestamp.ToBits()
+	if err != nil {
+		return nil, err
+	}
+
+	if err := binary.Write(bits, binary.BigEndian, t); err != nil {
+		return nil, err
+	}
+
+	if err := binary.Write(bits, binary.BigEndian, c.UriLength); err != nil {
+		return nil, err
+	}
+	if err := binary.Write(bits, binary.BigEndian, []byte(c.Uri)); err != nil {
+		return nil, err
+	}
+
+	return bits.Bytes(), nil
 }
 
 func (c *Change) ToMpv() (string, error) {

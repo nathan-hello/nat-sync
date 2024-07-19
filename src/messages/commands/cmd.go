@@ -22,11 +22,19 @@ type Command struct {
 }
 
 type SubCommand interface {
-	FromString(s []string) error
-	FromBits(bits []byte) error
 	ToBits() ([]byte, error)
-	IsEchoed() bool
 	ToMpv() (string, error)
+
+	ExecuteClient() ([]byte, error) // []byte is the response of the command
+	ExecuteServer() ([]byte, error)
+
+	NewFromBits([]byte) error
+	NewFromString([]string) error
+
+	// True  if each client in room runs the command themselves, individually (i.e. Pause).
+	// False if admin-related things, such as Kick and Join.
+	// If false, ExecuteClient() or ExecuteServer() will return a response in []byte and echo that.
+	IsEchoed() bool
 }
 
 var Head = struct {
@@ -36,6 +44,8 @@ var Head = struct {
 	Pause  cmdHead
 	Play   cmdHead
 	Seek   cmdHead
+	Stop   cmdHead
+	Wait   cmdHead
 }{
 	Change: 1,
 	Kick:   2,
@@ -43,6 +53,8 @@ var Head = struct {
 	Pause:  4,
 	Play:   5,
 	Seek:   6,
+	Stop:   7,
+	Wait:   8,
 }
 
 func New[T []byte | string](i T) (*Command, error) {
@@ -151,26 +163,12 @@ func newCmdFromBits(bits []byte) (*Command, error) {
 		return nil, err
 	}
 
-	var sub SubCommand
-
-	switch cmd.Head {
-	case Head.Change:
-		sub = &impl.Change{}
-	case Head.Kick:
-		sub = &impl.Kick{}
-	case Head.Join:
-		sub = &impl.Join{}
-	case Head.Pause:
-		sub = &impl.Pause{}
-	case Head.Play:
-		sub = &impl.Play{}
-	case Head.Seek:
-		sub = &impl.Seek{}
-	default:
-		return nil, utils.ErrNoCmdHeadFound(uint8(cmd.Head))
+	sub, err := getSubFromHead(cmd.Head)
+	if err != nil {
+		return nil, err
 	}
 
-	sub.FromBits(cmd.Content)
+	sub.NewFromBits(cmd.Content)
 	cmd.Sub = sub
 
 	// utils.DebugLogger.Printf("decoded cmd: %#v\n", cmd)
@@ -186,38 +184,17 @@ func newCmdFromString(s string) (*Command, error) {
 		return nil, nil
 	}
 
-	var head cmdHead
-	var sub SubCommand
-
-	switch strings.ToLower(parts[0]) {
-	case "change":
-		head = Head.Change
-		sub = &impl.Change{}
-	case "kick":
-		head = Head.Kick
-		sub = &impl.Kick{}
-	case "join":
-		head = Head.Join
-		sub = &impl.Join{}
-	case "pause":
-		head = Head.Pause
-		sub = &impl.Pause{}
-	case "play":
-		head = Head.Play
-		sub = &impl.Play{}
-	case "seek":
-		head = Head.Seek
-		sub = &impl.Seek{}
-	default:
-		return nil, utils.ErrBadArgs(parts)
+	head, err := getHeadFromString(parts[0])
+	if err != nil {
+		return nil, err
 	}
 
-	if len(parts) > 0 {
-		parts = parts[1:]
+	sub, err := getSubFromHead(head)
+	if err != nil {
+		return nil, err
 	}
 
-	err := sub.FromString(parts)
-
+	err = sub.NewFromString(parts[1:])
 	if err != nil {
 		return nil, err
 	}
@@ -234,6 +211,54 @@ func newCmdFromString(s string) (*Command, error) {
 		Sub:     sub,
 		Content: content,
 	}, nil
+
+}
+
+// Register new commands here
+func getSubFromHead(head cmdHead) (SubCommand, error) {
+	switch head {
+	case Head.Change:
+		return &impl.Change{}, nil
+	case Head.Kick:
+		return &impl.Kick{}, nil
+	case Head.Join:
+		return &impl.Join{}, nil
+	case Head.Pause:
+		return &impl.Pause{}, nil
+	case Head.Play:
+		return &impl.Play{}, nil
+	case Head.Seek:
+		return &impl.Seek{}, nil
+	case Head.Stop:
+		return &impl.Stop{}, nil
+	case Head.Wait:
+		return &impl.Wait{}, nil
+	}
+	return nil, utils.ErrNoCmdHeadFound(uint8(head))
+}
+
+// Register new strings here
+func getHeadFromString(s string) (cmdHead, error) {
+	switch strings.ToLower(s) {
+	case "change":
+		return Head.Change, nil
+	case "kick":
+		return Head.Kick, nil
+	case "join":
+		return Head.Join, nil
+	case "pause":
+		return Head.Pause, nil
+	case "play":
+		return Head.Play, nil
+	case "seek":
+		return Head.Seek, nil
+	case "stop":
+		return Head.Stop, nil
+	case "wait":
+		return Head.Wait, nil
+	default:
+		return 0, utils.ErrBadArgs([]string{s})
+	}
 
 }
 

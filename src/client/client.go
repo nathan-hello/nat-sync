@@ -44,11 +44,13 @@ func receive(conn net.Conn, p *ClientParams) {
 	defer conn.Close()
 	reader := bufio.NewReader(conn)
 	for {
-		msg, err := messages.WaitReader(reader)
+		msgs, err := messages.WaitReader(reader)
 		if err != nil {
 			utils.ErrorLogger.Printf("client got a bad message. error: %s\n", err)
 		}
-		p.Player.AppendQueue(msg)
+		for _, v := range msgs {
+			p.Player.AppendQueue(v)
+		}
 	}
 }
 
@@ -59,21 +61,23 @@ func transmit(conn net.Conn, p *ClientParams) {
 
 		// utils.DebugLogger.Printf("new reader text: %s\n", text)
 
-		cmd, err := messages.New(text)
+		msgs, err := messages.New(text)
 		if err != nil {
 			utils.ErrorLogger.Println(err)
 			continue
 		}
 
-		bits, err := cmd.ToBits()
-		if err != nil {
-			utils.ErrorLogger.Println("cmd.ToBits() in client transmit. err: ", err)
-			continue
-		}
-		// utils.DebugLogger.Printf("client sending bits: %b, length: %d\n", bits, len(bits))
-		_, err = conn.Write(bits)
-		if err != nil {
-			utils.ErrorLogger.Printf("client writing bits failed. bits: %b\n", bits)
+		for _, m := range msgs {
+			bits, err := m.ToBits()
+			if err != nil {
+				utils.ErrorLogger.Println("cmd.ToBits() in client transmit. err: ", err)
+				continue
+			}
+			// utils.DebugLogger.Printf("client sending bits: %b, length: %d\n", bits, len(bits))
+			_, err = conn.Write(bits)
+			if err != nil {
+				utils.ErrorLogger.Printf("client writing bits failed. bits: %b\n", bits)
+			}
 		}
 	}
 }

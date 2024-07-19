@@ -15,7 +15,6 @@ type ServerParams struct {
 }
 
 func CreateServer(p *ServerParams) error {
-
 	listener, err := net.Listen("tcp", p.ServerAddress)
 	if err != nil {
 		return err
@@ -28,50 +27,63 @@ func CreateServer(p *ServerParams) error {
 }
 
 func listen(listener net.Listener) {
+	msgChan := make(chan messages.Message)
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
 			utils.ErrorLogger.Println("accepting connection:", err)
 			continue
 		}
-		go receive(conn)
+		go receive(conn, msgChan)
+		go transmit(conn, msgChan)
 	}
 }
 
-func receive(conn net.Conn) {
+func receive(conn net.Conn, msgChan chan messages.Message) {
 	defer conn.Close()
 	reader := bufio.NewReader(conn)
 	for {
-		msg, err := messages.WaitReader(reader)
+		msgs, err := messages.WaitReader(reader)
 		if err != nil {
 			utils.ErrorLogger.Printf("server got a bad message. error: %s\n", err)
 		}
-		go echo(conn, msg)
+		for _, v := range msgs {
+			msgChan <- v
+		}
 	}
 }
 
-func echo(conn net.Conn, v messages.Message) {
-	var response []byte
-	switch msg := v.(type) {
-	case *commands.Command:
-		if msg.Sub.IsEchoed() {
-			r, err := msg.ToBits()
+func transmit(conn net.Conn, msgChan chan messages.Message) {
+	for v := range msgChan {
+		var response []byte
+		switch msg := v.(type) {
+		case *commands.Command:
+			r, err := msg.Sub.ExecuteServer()
 			if err != nil {
 				utils.ErrorLogger.Printf("encoding command. cmd: %#v\n err:%s", msg, err)
 			}
 			response = r
+
+			if msg.Sub.IsEchoed() {
+				r, err := msg.ToBits()
+				if err != nil {
+					utils.ErrorLogger.Printf("encoding command. cmd: %#v\n err:%s", msg, err)
+				}
+				response = r //overwrite r if IsEchoed()
+			}
+
+		case *ack.Ack:
+			ack, err := ack.New("200")
+			if err != nil {
+				utils.ErrorLogger.Printf("creating new ack message. err: %s", err)
+			}
+			r, err := ack.ToBits()
+			if err != nil {
+				utils.ErrorLogger.Printf("encoding ack. err: %s", err)
+			}
+			response = r
 		}
-	case *ack.Ack:
-		ack, err := ack.New("200")
-		if err != nil {
-			utils.ErrorLogger.Printf("creating new ack message. err: %s", err)
-		}
-		r, err := ack.ToBits()
-		if err != nil {
-			utils.ErrorLogger.Printf("encoding ack. err: %s", err)
-		}
-		response = r
+		utils.DebugLogger.Printf("Sending bits: %b\n", response)
+		conn.Write(response)
 	}
-	utils.DebugLogger.Printf("Sending bits: %b\n", response)
-	conn.Write(response)
 }

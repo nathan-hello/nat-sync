@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/nathan-hello/nat-sync/src/messages/ack"
 	"github.com/nathan-hello/nat-sync/src/messages/commands"
@@ -14,32 +15,47 @@ type Message interface {
 	ToBits() ([]byte, error)
 }
 
-func New[T string | []byte](i T) (Message, error) {
+func New[T string | []byte](i T) ([]Message, error) {
+	msgs := []Message{}
 	switch t := any(i).(type) {
 	case []byte:
 		if commands.IsCommand(t) {
-			utils.DebugLogger.Printf("cmd hit")
-			c, err := commands.New(t)
-			utils.DebugLogger.Printf("cmd got: %#v\n", c)
-			return c, err
+			m, err := commands.New(t)
+			if err != nil {
+				return nil, err
+			}
+			return append(msgs, m), nil
 		}
 		if ack.IsAck(t) {
-			return ack.New(t)
+			m, err := ack.New(t)
+			if err != nil {
+				return nil, err
+			}
+			return append(msgs, m), nil
 		}
 		return nil, utils.ErrBadMsgType(t)
 	case string:
-		utils.DebugLogger.Printf("str hit")
-		cmd, err := commands.New(t)
-		if err != nil {
-			return nil, utils.ErrBadString(t, err)
+
+		utils.DebugLogger.Printf("string got: %s\n", t)
+		if m := getMacro(t); m != nil {
+			return m, nil
 		}
-		utils.DebugLogger.Printf("cmd got: %#v\n", cmd)
-		return cmd, nil
+
+		delmited := strings.Split(t, ";")
+		for _, s := range delmited {
+			cmd, err := commands.New(s)
+			if err != nil {
+				return nil, utils.ErrBadString(t, err)
+			}
+
+			msgs = append(msgs, cmd)
+		}
+		return msgs, nil
 	}
 	return nil, utils.ErrImpossible
 }
 
-func WaitReader(reader io.Reader) (Message, error) {
+func WaitReader(reader io.Reader) ([]Message, error) {
 
 	lengthBytes := make([]byte, 2)
 

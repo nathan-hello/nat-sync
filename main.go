@@ -20,7 +20,6 @@ const (
 
 var (
 	signalListener = make(chan os.Signal, 1) // this only works on unix
-	cleanupTime    = make(chan bool, 1)
 )
 
 func main() {
@@ -30,9 +29,12 @@ func main() {
 
 	utils.InitLogger()
 
-	server.CreateServer(&server.ServerParams{ServerAddress: serverAddr})
+	err := server.CreateServer(&server.ServerParams{ServerAddress: serverAddr})
+	if err != nil {
+		utils.ErrorLogger.Fatalf("server could not be started. err: %s", err)
+	}
 
-	player, err := players.New(players.Mpv)
+	player, err := players.New(utils.TargetMpv)
 
 	if err != nil {
 		log.Fatalf("could not start video player for reason: %s\n", err)
@@ -47,7 +49,5 @@ func main() {
 	)
 
 	signal.Notify(signalListener, syscall.SIGINT, syscall.SIGTERM, syscall.SIGTSTP)
-	signal := <-signalListener
-	fmt.Printf("\nReceived signal %s, exiting\n", signal)
-	cleanupTime <- true
+	fmt.Printf("\nReceived signal %s, exiting\n", <-signalListener)
 }

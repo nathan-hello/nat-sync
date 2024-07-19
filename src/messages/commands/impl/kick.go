@@ -15,28 +15,11 @@ type Kick struct {
 	HideMsg bool
 }
 
-func (c *Kick) IsEchoed() bool { return false }
+func (c *Kick) ExecuteClient() ([]byte, error) { return nil, nil }
+func (c *Kick) ExecuteServer() ([]byte, error) { return nil, nil }
+func (c *Kick) IsEchoed() bool                 { return false }
 
-func (c *Kick) ToBits() ([]byte, error) {
-
-	var bits = new(bytes.Buffer)
-
-	if err := binary.Write(bits, binary.BigEndian, c.UserId); err != nil {
-		return nil, err
-	}
-
-	if err := binary.Write(bits, binary.BigEndian, c.IsSelf); err != nil {
-		return nil, err
-	}
-
-	if err := binary.Write(bits, binary.BigEndian, c.HideMsg); err != nil {
-		return nil, err
-	}
-
-	return bits.Bytes(), nil
-}
-
-func (c *Kick) FromBits(bits []byte) error {
+func (c *Kick) NewFromBits(bits []byte) error {
 	buf := bytes.NewReader(bits)
 
 	if err := binary.Read(buf, binary.BigEndian, &c.UserId); err != nil {
@@ -55,13 +38,13 @@ func (c *Kick) FromBits(bits []byte) error {
 }
 
 // Example:
-// ["--UserId=2182", "IsSelf=true", "--HideMsg=false"]
-func (c *Kick) FromString(s []string) error {
+// ["UserId=2182", "IsSelf=true", "--HideMsg=false"]
+func (c *Kick) NewFromString(s []string) error {
 	for _, v := range s {
 		v = strings.ToLower(v)
 		switch {
-		case strings.HasPrefix(v, "--userid="):
-			flag, _ := strings.CutPrefix(v, "--userid=")
+		case strings.HasPrefix(v, "userid="):
+			flag, _ := strings.CutPrefix(v, "userid=")
 			flag, _ = strings.CutPrefix(flag, "\"")
 			flag, _ = strings.CutSuffix(flag, "\"")
 			i, err := strconv.ParseUint(flag, 10, 16)
@@ -70,8 +53,8 @@ func (c *Kick) FromString(s []string) error {
 			}
 			c.UserId = uint16(i)
 
-		case strings.HasPrefix(v, "--isself="):
-			flag, _ := strings.CutPrefix(v, "--isself=")
+		case strings.HasPrefix(v, "isself="):
+			flag, _ := strings.CutPrefix(v, "isself=")
 			flag, _ = strings.CutPrefix(flag, "\"")
 			flag, _ = strings.CutSuffix(flag, "\"")
 			if flag == "true" {
@@ -84,8 +67,8 @@ func (c *Kick) FromString(s []string) error {
 			}
 			return utils.ErrBadArgs(s)
 
-		case strings.HasPrefix(v, "--hidemsg="):
-			flag, _ := strings.CutPrefix(v, "--hidemsg=")
+		case strings.HasPrefix(v, "hidemsg="):
+			flag, _ := strings.CutPrefix(v, "hidemsg=")
 			flag, _ = strings.CutPrefix(flag, "\"")
 			flag, _ = strings.CutSuffix(flag, "\"")
 			if flag == "true" {
@@ -107,6 +90,25 @@ func (c *Kick) FromString(s []string) error {
 	}
 
 	return nil
+}
+
+func (c *Kick) ToBits() ([]byte, error) {
+
+	var bits = new(bytes.Buffer)
+
+	if err := binary.Write(bits, binary.BigEndian, c.UserId); err != nil {
+		return nil, err
+	}
+
+	if err := binary.Write(bits, binary.BigEndian, c.IsSelf); err != nil {
+		return nil, err
+	}
+
+	if err := binary.Write(bits, binary.BigEndian, c.HideMsg); err != nil {
+		return nil, err
+	}
+
+	return bits.Bytes(), nil
 }
 
 func (c *Kick) ToMpv() (string, error) {

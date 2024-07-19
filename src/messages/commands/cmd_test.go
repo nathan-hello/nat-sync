@@ -61,7 +61,7 @@ func TestBits(t *testing.T) {
 			t.Fatalf("err in subs index %d\nerr: %s", i, err)
 		}
 		// t.Logf("sub: %#v\ntobits:%#v\n", v, b)
-		err = empties[i].FromBits(b)
+		err = empties[i].NewFromBits(b)
 		if err != nil {
 			t.Fatalf("err in frombits(): %#v\n", err)
 		}
