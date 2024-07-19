@@ -1,17 +1,17 @@
-package tests
+package commands
 
 import (
 	"reflect"
 	"slices"
 	"testing"
 
-	"github.com/nathan-hello/nat-sync/src/commands"
-	"github.com/nathan-hello/nat-sync/src/commands/impl"
+	"github.com/nathan-hello/nat-sync/src/messages/commands/impl"
+	"github.com/nathan-hello/nat-sync/src/utils"
 )
 
 func TestCmdStrings(t *testing.T) {
-	initEnvironment()
-	happy := map[string]commands.SubCommand{
+	utils.InitLogger()
+	happy := map[string]SubCommand{
 		"change --uri=asdf.com/cats --action=append --hours=23 --mins=51 --secs=12": &impl.Change{Uri: "asdf.com/cats", UriLength: 13, Action: impl.ChgAppend, Timestamp: impl.Seek{Hours: 23, Mins: 51, Secs: 12}},
 		"join   --roomid=34129":                              &impl.Join{RoomId: uint16(34129)},
 		"kick   --userid=2182 --isself=false --hidemsg=true": &impl.Kick{UserId: 2182, IsSelf: false, HideMsg: true},
@@ -22,12 +22,12 @@ func TestCmdStrings(t *testing.T) {
 
 	for k, v := range happy {
 		// t.Log("testing string: ", k)
-		cmd, err := commands.CmdFromString(k)
+		cmd, err := New(k)
 		if err != nil {
-			t.Fatalf("\nCmdFromString error: %s\nstring: %s", err, k)
+			t.Fatalf("\nNewCmdFromString error: %s\nstring: %s", err, k)
 		}
 		if !reflect.DeepEqual(cmd.Sub, v) {
-			t.Fatalf("\nsubcommand from CmdFromString() does not match test case. \nstring: %s\nresult: %#v\nexpect: %#v", k, cmd.Sub, v)
+			t.Fatalf("\nsubcommand from NewCmdFromString() does not match test case. \nstring: %s\nresult: %#v\nexpect: %#v", k, cmd.Sub, v)
 		}
 		t.Log("string good   : ", k)
 	}
@@ -35,8 +35,8 @@ func TestCmdStrings(t *testing.T) {
 }
 
 func TestBits(t *testing.T) {
-	initEnvironment()
-	empties := []commands.SubCommand{
+	utils.InitLogger()
+	empties := []SubCommand{
 		&impl.Change{},
 		&impl.Join{},
 		&impl.Kick{},
@@ -45,7 +45,7 @@ func TestBits(t *testing.T) {
 		&impl.Seek{},
 	}
 
-	subs := []commands.SubCommand{
+	subs := []SubCommand{
 		&impl.Change{Uri: "asdf.com/cats", UriLength: 13, Action: impl.ChgAppend, Timestamp: impl.Seek{Hours: 23, Mins: 51, Secs: 12}},
 		&impl.Join{RoomId: uint16(34129)},
 		&impl.Kick{UserId: 2182, IsSelf: false, HideMsg: true},
@@ -79,20 +79,20 @@ func assert(test bool, t *testing.T, msg string) {
 }
 
 func TestEncodeCmd(t *testing.T) {
-	initEnvironment()
-	subs := map[commands.CmdHead]commands.SubCommand{
-		commands.ChangeHead: &impl.Change{Uri: "asdf.com/cats", UriLength: 13, Action: impl.ChgAppend, Timestamp: impl.Seek{Hours: 23, Mins: 51, Secs: 12}},
-		commands.JoinHead:   &impl.Join{RoomId: uint16(34129)},
-		commands.KickHead:   &impl.Kick{UserId: 2182, IsSelf: false, HideMsg: true},
-		commands.PauseHead:  &impl.Pause{},
-		commands.PlayHead:   &impl.Play{},
-		commands.SeekHead:   &impl.Seek{Hours: 10},
+	utils.InitLogger()
+	subs := map[cmdHead]SubCommand{
+		Head.Change: &impl.Change{Uri: "asdf.com/cats", UriLength: 13, Action: impl.ChgAppend, Timestamp: impl.Seek{Hours: 23, Mins: 51, Secs: 12}},
+		Head.Join:   &impl.Join{RoomId: uint16(34129)},
+		Head.Kick:   &impl.Kick{UserId: 2182, IsSelf: false, HideMsg: true},
+		Head.Pause:  &impl.Pause{},
+		Head.Play:   &impl.Play{},
+		Head.Seek:   &impl.Seek{Hours: 10},
 	}
 
 	for k, v := range subs {
-		cmd := commands.Command{
+		cmd := Command{
 			Head:    k,
-			Version: commands.CurrentVersion,
+			Version: utils.CurrentVersion,
 			UserId:  8231,
 		}
 		bits, err := v.ToBits()
@@ -108,7 +108,7 @@ func TestEncodeCmd(t *testing.T) {
 
 		cmd.Sub = v // to verify that it's equal. can't put it before the encode process
 
-		newCmd, err := commands.DecodeCommand(cmdBits)
+		newCmd, err := New(cmdBits)
 		if err != nil {
 			t.Fatalf("err decodecommand(): %s", err)
 		}

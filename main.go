@@ -3,29 +3,24 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/nathan-hello/nat-sync/src/client"
-	"github.com/nathan-hello/nat-sync/src/client/players"
-	"github.com/nathan-hello/nat-sync/src/commands"
+	"github.com/nathan-hello/nat-sync/src/players"
 	"github.com/nathan-hello/nat-sync/src/server"
 	"github.com/nathan-hello/nat-sync/src/utils"
 )
 
 const (
-	clientAddr = ":1412"
 	serverAddr = ":1412"
 )
 
 var (
 	signalListener = make(chan os.Signal, 1) // this only works on unix
 	cleanupTime    = make(chan bool, 1)
-	clientInit     = make(chan bool, 1)
-	serverInit     = make(chan bool, 1)
-	toClientCmds   = make(chan commands.Command, 5)
-	toServerCmds   = make(chan commands.Command, 5)
 )
 
 func main() {
@@ -35,28 +30,21 @@ func main() {
 
 	utils.InitLogger()
 
-	serverParams := server.ServerParams{
-		ServerAddress: serverAddr,
-		Init:          serverInit,
-		ToServer:      toServerCmds,
-	}
-	go server.CreateServer(serverParams)
-	<-serverInit
+	server.CreateServer(&server.ServerParams{ServerAddress: serverAddr})
 
-	clientParams := client.ClientParams{
-		ServerAddress: serverAddr,
-		Init:          clientInit,
-		ToClient:      toClientCmds,
-		InputReader:   os.Stdin,
+	player, err := players.New(players.Mpv)
+
+	if err != nil {
+		log.Fatalf("could not start video player for reason: %s\n", err)
 	}
 
-	lp := players.LaunchParams{
-		Player:   players.LaunchMpv,
-		Init:     make(chan bool),
-		ToClient: toClientCmds,
-	}
-	go client.CreateClient(&clientParams, &lp)
-	<-clientInit
+	client.CreateClient(
+		&client.ClientParams{
+			ServerAddress: serverAddr,
+			InputReader:   os.Stdin,
+			Player:        player,
+		},
+	)
 
 	signal.Notify(signalListener, syscall.SIGINT, syscall.SIGTERM, syscall.SIGTSTP)
 	signal := <-signalListener

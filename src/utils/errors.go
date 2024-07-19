@@ -12,6 +12,8 @@ var (
 	ErrUsernameBlank = errors.New("username string in command was blank")
 )
 
+var ErrImpossible = errors.New("this error is here because go's type system is just ok")
+
 func ErrDecodeType(bits []byte) error {
 	return fmt.Errorf("could not decode the type from the following bytes: %b", bits)
 }
@@ -42,4 +44,13 @@ func ErrLongString(s []string) error {
 
 func ErrNotImplemented(s string) error {
 	return fmt.Errorf("feature is not implemented yet: %s", s)
+}
+
+func ErrBadString(s string, err error) error {
+	e := fmt.Errorf("string was not able to be turned into a message (did you try passing in an ack?). string: %s", s)
+	return errors.Join(e, err)
+}
+
+func ErrBadMsgType(b []byte) error {
+	return fmt.Errorf("type bit does not match anything we got: %b", b)
 }

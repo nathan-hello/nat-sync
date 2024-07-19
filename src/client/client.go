@@ -4,52 +4,51 @@ import (
 	"bufio"
 	"io"
 	"net"
+	"time"
 
-	"github.com/nathan-hello/nat-sync/src/client/players"
-	"github.com/nathan-hello/nat-sync/src/commands"
+	"github.com/nathan-hello/nat-sync/src/messages"
+	"github.com/nathan-hello/nat-sync/src/players"
 	"github.com/nathan-hello/nat-sync/src/utils"
 )
 
 type ClientParams struct {
 	ServerAddress string
-	Init          chan bool
-	ToClient      chan commands.Command
+	Player        players.Player
 	InputReader   io.Reader
 }
 
-func CreateClient(p *ClientParams, lp *players.LaunchParams) {
-	conn, err := net.Dial("tcp", p.ServerAddress)
-	if err != nil {
-		utils.ErrorLogger.Println("Error connecting to server:", err)
-		return
+func CreateClient(p *ClientParams) {
+	var conn net.Conn
+	var err error
+	maxRetries := 5
+	for i := 0; i < maxRetries; i++ {
+		conn, err = net.Dial("tcp", p.ServerAddress)
+		if err == nil {
+			break
+		}
+		if i == maxRetries-1 {
+			utils.ErrorLogger.Println("Error connecting to server:", err)
+			return
+		}
+		utils.DebugLogger.Println("Couldn't connect to server, trying again:  " + p.ServerAddress)
+		time.Sleep(250 * time.Millisecond)
 	}
-	defer conn.Close()
 	utils.DebugLogger.Println("Started client connected to " + p.ServerAddress)
 
-	go launchPlayer(lp)
-	<-lp.Init
-
+	go receive(conn, p)
 	go transmit(conn, p)
-	p.Init <- true
-
-	receive(conn, p)
 
 }
 
 func receive(conn net.Conn, p *ClientParams) {
+	defer conn.Close()
 	reader := bufio.NewReader(conn)
 	for {
-		cmdBits, err := utils.ConnRxCommand(reader)
+		msg, err := messages.WaitReader(reader)
 		if err != nil {
-			utils.ErrorLogger.Println(err)
+			utils.ErrorLogger.Printf("client got a bad message. error: %s\n", err)
 		}
-		dec, err := commands.DecodeCommand(cmdBits)
-		if err != nil {
-			utils.ErrorLogger.Println(err)
-		}
-
-		p.ToClient <- *dec
-		utils.DebugLogger.Printf("server: sent decoded cmd to channel\n")
+		p.Player.AppendQueue(msg)
 	}
 }
 
@@ -57,52 +56,24 @@ func transmit(conn net.Conn, p *ClientParams) {
 	scanner := bufio.NewScanner(p.InputReader)
 	for scanner.Scan() { // this blocks the terminal
 		text := scanner.Text()
-		creator := uint16(10126)
 
-		utils.DebugLogger.Printf("new reader text: %s\n", text)
+		// utils.DebugLogger.Printf("new reader text: %s\n", text)
 
-		cmd, err := commands.CmdFromString(text)
+		cmd, err := messages.New(text)
 		if err != nil {
 			utils.ErrorLogger.Println(err)
 			continue
 		}
-
-		cmd.UserId = creator
 
 		bits, err := cmd.ToBits()
 		if err != nil {
 			utils.ErrorLogger.Println("cmd.ToBits() in client transmit. err: ", err)
 			continue
 		}
-		utils.DebugLogger.Printf("client sending bits: %b, length: %d\n", bits, len(bits))
+		// utils.DebugLogger.Printf("client sending bits: %b, length: %d\n", bits, len(bits))
 		_, err = conn.Write(bits)
 		if err != nil {
 			utils.ErrorLogger.Printf("client writing bits failed. bits: %b\n", bits)
 		}
 	}
-}
-
-func launchPlayer(p *players.LaunchParams) error {
-	switch p.Player {
-	case players.LaunchMpv:
-		mpv := players.NewMpv()
-		cmd := mpv.GetLaunchCmd()
-
-		err := cmd.Start()
-		if err != nil {
-			return err
-		}
-
-		go mpv.Connect(p)
-		cmd.Wait()
-	case players.LaunchVlc:
-		p.Init <- true // init is usually handled after connection to player is successful
-		return utils.ErrNotImplemented("vlc")
-	case players.NoLaunchy:
-		p.Init <- true // init is usually handled after connection to player is successful
-		return nil
-	}
-
-	return nil
-
 }

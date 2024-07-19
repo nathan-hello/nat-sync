@@ -4,71 +4,74 @@ import (
 	"bufio"
 	"net"
 
-	"github.com/nathan-hello/nat-sync/src/commands"
+	"github.com/nathan-hello/nat-sync/src/messages"
+	"github.com/nathan-hello/nat-sync/src/messages/ack"
+	"github.com/nathan-hello/nat-sync/src/messages/commands"
 	"github.com/nathan-hello/nat-sync/src/utils"
 )
 
 type ServerParams struct {
 	ServerAddress string
-	Init          chan bool
-	ToServer      chan commands.Command
 }
 
-func CreateServer(p ServerParams) {
+func CreateServer(p *ServerParams) error {
+
 	listener, err := net.Listen("tcp", p.ServerAddress)
 	if err != nil {
-		utils.ErrorLogger.Println("starting server:", err)
-		return
+		return err
 	}
-	defer listener.Close() // the for loop below means this will never run
 
-	p.Init <- true
-	utils.DebugLogger.Println("Started server at " + p.ServerAddress)
+	go listen(listener)
+	utils.DebugLogger.Println("started server at " + p.ServerAddress)
+
+	return nil
+}
+
+func listen(listener net.Listener) {
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
 			utils.ErrorLogger.Println("accepting connection:", err)
 			continue
 		}
-		go receive(conn, p)
-		go transmit(conn, p)
+		go receive(conn)
 	}
 }
 
-func receive(conn net.Conn, p ServerParams) {
+func receive(conn net.Conn) {
 	defer conn.Close()
-
 	reader := bufio.NewReader(conn)
 	for {
-		cmdBits, err := utils.ConnRxCommand(reader)
+		msg, err := messages.WaitReader(reader)
 		if err != nil {
-			utils.ErrorLogger.Println(err)
+			utils.ErrorLogger.Printf("server got a bad message. error: %s\n", err)
 		}
-		dec, err := commands.DecodeCommand(cmdBits)
-		if err != nil {
-			utils.ErrorLogger.Println(err)
-		}
-
-		p.ToServer <- *dec
-		utils.DebugLogger.Printf("server: sent decoded cmd to channel\n")
+		go echo(conn, msg)
 	}
 }
 
-func transmit(conn net.Conn, p ServerParams) {
-	for cmd := range p.ToServer {
-		var response []byte
-		if cmd.Sub.IsEchoed() {
-			r, err := cmd.ToBits() // \n is put at end here
+func echo(conn net.Conn, v messages.Message) {
+	var response []byte
+	switch msg := v.(type) {
+	case *commands.Command:
+		if msg.Sub.IsEchoed() {
+			r, err := msg.ToBits()
 			if err != nil {
-				utils.ErrorLogger.Printf("encoding command. cmd: %#v\n err:%s", cmd, err)
-				continue
+				utils.ErrorLogger.Printf("encoding command. cmd: %#v\n err:%s", msg, err)
 			}
 			response = r
-		} else {
-			response = []byte("200\n")
 		}
-
-		utils.DebugLogger.Printf("Sending bits: %b\n", response)
-		conn.Write(response)
+	case *ack.Ack:
+		ack, err := ack.New("200")
+		if err != nil {
+			utils.ErrorLogger.Printf("creating new ack message. err: %s", err)
+		}
+		r, err := ack.ToBits()
+		if err != nil {
+			utils.ErrorLogger.Printf("encoding ack. err: %s", err)
+		}
+		response = r
 	}
+	utils.DebugLogger.Printf("Sending bits: %b\n", response)
+	conn.Write(response)
 }
