@@ -1,6 +1,9 @@
 package impl
 
+import "fmt"
+
 type Play struct {
+	User string
 }
 
 func (c *Play) ExecuteClient() ([]byte, error) { return nil, nil }
@@ -18,5 +21,7 @@ func (c *Play) ToBits() ([]byte, error) {
 	return nil, nil
 }
 func (c *Play) ToMpv() (string, error) {
-	return `{"command":["set_property","pause",false]}`, nil
+	pause := `{"command":["set_property","pause",false]}`
+	msg := fmt.Sprintf(`{ "command": ["show-text", "%s paused", 1000, 0] }`, c.User)
+	return pause + "\n" + msg, nil
 }
