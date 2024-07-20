@@ -62,7 +62,6 @@ func transmit(conn net.Conn, p *ClientParams) {
 	for scanner.Scan() { // this blocks the terminal
 		text := scanner.Text()
 		if players.IsPlayerCommand(text) {
-			utils.DebugLogger.Println("local cmd found")
 			playerCmd, err := players.NewPlayerCmd(text, p.Player)
 			if err != nil {
 				utils.ErrorLogger.Println(err)
