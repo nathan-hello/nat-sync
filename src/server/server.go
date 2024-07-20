@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"io"
 	"net"
+	"sync"
 
 	"github.com/nathan-hello/nat-sync/src/messages"
 	"github.com/nathan-hello/nat-sync/src/messages/commands"
@@ -20,13 +21,18 @@ func CreateServer(p *ServerParams) error {
 		return err
 	}
 
-	go listen(listener)
+	man := &Manager{
+		Lock:    sync.Mutex{},
+		Clients: []Client{},
+	}
+
+	go listen(listener, man)
 	utils.DebugLogger.Println("started server at " + p.ServerAddress)
 
 	return nil
 }
 
-func listen(listener net.Listener) {
+func listen(listener net.Listener, man *Manager) {
 	msgChan := make(chan messages.Message)
 	for {
 		conn, err := listener.Accept()
@@ -34,8 +40,16 @@ func listen(listener net.Listener) {
 			utils.ErrorLogger.Println("accepting connection:", err)
 			continue
 		}
+
+		man.AddClient(Client{
+			Id:   1000,
+			Name: "asdf",
+			Conn: conn,
+			Room: 1,
+		})
+
 		go receive(conn, msgChan)
-		go transmit(conn, msgChan)
+		go transmit(msgChan, man)
 	}
 }
 
@@ -45,6 +59,7 @@ func receive(conn net.Conn, msgChan chan messages.Message) {
 	for {
 		msgs, err := messages.WaitReader(reader)
 		if err == io.EOF {
+			close(msgChan)
 			return
 		}
 		if err != nil {
@@ -56,7 +71,7 @@ func receive(conn net.Conn, msgChan chan messages.Message) {
 	}
 }
 
-func transmit(conn net.Conn, msgChan chan messages.Message) {
+func transmit(msgChan chan messages.Message, man *Manager) {
 	for v := range msgChan {
 		var response []byte
 		var err error
@@ -75,7 +90,7 @@ func transmit(conn net.Conn, msgChan chan messages.Message) {
 
 			if len(response) > 0 {
 				utils.DebugLogger.Printf("Sending bits: %b\n", response)
-				conn.Write(response)
+				man.BroadcastMessage(response)
 			}
 		default:
 			utils.ErrorLogger.Printf("server got a non-command message: %#v\n", msg)
