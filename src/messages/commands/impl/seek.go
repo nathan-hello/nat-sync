@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/nathan-hello/nat-sync/src/players"
 	"github.com/nathan-hello/nat-sync/src/utils"
 )
 
@@ -18,7 +19,20 @@ type Seek struct {
 	Secs  uint8
 }
 
-func (c *Seek) ExecuteClient() ([]byte, error) { return nil, nil }
+func (c *Seek) ExecuteClient(p players.Player) ([]byte, error) {
+
+	asdf := MpvJson{}
+
+	asdf.Command = append(asdf.Command, "pause")
+	asdf.Command = append(asdf.Command, "false")
+
+	mpvCmd, err := json.Marshal(asdf)
+	if err != nil {
+		return nil, err
+	}
+	return mpvCmd, nil
+
+}
 func (c *Seek) ExecuteServer() ([]byte, error) { return nil, nil }
 func (c *Seek) IsEchoed() bool                 { return true }
 func (c *Seek) NewFromBits(bits []byte) error {
@@ -45,6 +59,8 @@ func (c *Seek) NewFromString(s []string) error {
 	init := false
 	for _, v := range s {
 		v = strings.ToLower(v)
+		v = strings.TrimPrefix(v, "-")
+		v = strings.TrimPrefix(v, "-")
 		switch {
 		case strings.HasPrefix(v, "hours="):
 			flag, _ := strings.CutPrefix(v, "hours=")
@@ -103,17 +119,4 @@ func (c *Seek) ToBits() ([]byte, error) {
 
 	return buf.Bytes(), nil
 
-}
-
-func (c *Seek) ToMpv() (string, error) {
-	asdf := MpvJson{}
-
-	asdf.Command = append(asdf.Command, "pause")
-	asdf.Command = append(asdf.Command, "false")
-
-	mpvCmd, err := json.Marshal(asdf)
-	if err != nil {
-		return "", err
-	}
-	return string(mpvCmd), nil
 }

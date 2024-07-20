@@ -13,7 +13,7 @@ import (
 
 type Message interface {
 	ToBits() ([]byte, error)
-	ExecutePlayer(players.Player) (string, error)
+	ExecutePlayer(players.Player) ([]byte, error)
 }
 
 func New[T string | []byte](i T) ([]Message, error) {

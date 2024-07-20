@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"strings"
 
+	"github.com/nathan-hello/nat-sync/src/players"
 	"github.com/nathan-hello/nat-sync/src/utils"
 )
 
@@ -26,13 +27,12 @@ type Ack struct {
 	Message string
 }
 
-func (c *Ack) ExecuteClient() ([]byte, error) {
+func (c *Ack) ExecuteClient(_ players.Player) ([]byte, error) {
 	utils.DebugLogger.Printf("received ack: %#v\n", c)
 	return nil, nil
 }
 func (c *Ack) ExecuteServer() ([]byte, error) { return nil, nil }
 func (c *Ack) IsEchoed() bool                 { return false }
-func (c *Ack) ToMpv() (string, error)         { return "", nil }
 
 func (a *Ack) ToBits() ([]byte, error) {
 	bits := new(bytes.Buffer)
@@ -70,6 +70,8 @@ func (c *Ack) NewFromBits(bits []byte) error {
 func (c *Ack) NewFromString(s []string) error {
 	for _, v := range s {
 		v = strings.ToLower(v)
+		v = strings.TrimPrefix(v, "-")
+		v = strings.TrimPrefix(v, "-")
 		switch {
 		case strings.HasPrefix(v, "message="):
 			flag, _ := strings.CutPrefix(v, "message=")

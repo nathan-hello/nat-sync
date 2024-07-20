@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/nathan-hello/nat-sync/src/players"
 	"github.com/nathan-hello/nat-sync/src/utils"
 )
 
@@ -24,7 +25,23 @@ type Change struct {
 	Uri       string
 }
 
-func (c *Change) ExecuteClient() ([]byte, error) { return nil, nil }
+func (c *Change) ExecuteClient(p players.Player) ([]byte, error) {
+	asdf := MpvJson{}
+
+	asdf.Command = append(asdf.Command, "loadfile")
+	asdf.Command = append(asdf.Command, c.Uri)
+
+	if c.Action == ChgAppend {
+		asdf.Command = append(asdf.Command, "append-play")
+	}
+	// if c.Action == ChgImmediate // Immediately playing is the default behavior
+
+	mpvCmd, err := json.Marshal(asdf)
+	if err != nil {
+		return nil, err
+	}
+	return mpvCmd, nil
+}
 func (c *Change) ExecuteServer() ([]byte, error) { return nil, nil }
 func (c *Change) IsEchoed() bool                 { return true }
 
@@ -60,6 +77,8 @@ func (c *Change) NewFromBits(bits []byte) error {
 func (c *Change) NewFromString(s []string) error {
 	for _, v := range s {
 		v = strings.ToLower(v)
+		v = strings.TrimPrefix(v, "-")
+		v = strings.TrimPrefix(v, "-")
 		switch {
 		case strings.HasPrefix(v, "uri="):
 			flag, _ := strings.CutPrefix(v, "uri=")
@@ -139,22 +158,4 @@ func (c *Change) ToBits() ([]byte, error) {
 	}
 
 	return bits.Bytes(), nil
-}
-
-func (c *Change) ToMpv() (string, error) {
-	asdf := MpvJson{}
-
-	asdf.Command = append(asdf.Command, "loadfile")
-	asdf.Command = append(asdf.Command, c.Uri)
-
-	if c.Action == ChgAppend {
-		asdf.Command = append(asdf.Command, "append-play")
-	}
-	// if c.Action == ChgImmediate // Immediately playing is the default behavior
-
-	mpvCmd, err := json.Marshal(asdf)
-	if err != nil {
-		return "", err
-	}
-	return string(mpvCmd), nil
 }

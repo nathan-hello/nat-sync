@@ -10,8 +10,15 @@ import (
 	"github.com/nathan-hello/nat-sync/src/utils"
 )
 
+// One-method interface because that's all we're
+// using here. Messages interface implements this.
+//
+// This means players package doesn't need to import
+// messages package for the Messages interface.
+// Otherwise, this interface isn't being used for
+// any special composability. Just the lack of import.
 type PlayerExecutor interface {
-	ExecutePlayer(Player) (string, error)
+	ExecutePlayer(Player) ([]byte, error)
 }
 
 type mpv struct {
@@ -93,7 +100,7 @@ func (v *mpv) transmit(conn net.Conn) {
 
 		utils.DebugLogger.Printf("sending cmd to player. cmd: %s", mpvStr)
 
-		_, err = conn.Write([]byte(mpvStr + "\n"))
+		_, err = conn.Write(append(mpvStr, byte('\n')))
 		if err != nil {
 			utils.ErrorLogger.Printf("sending command to player socket. cmd: %#v err: %s", m, err)
 			break

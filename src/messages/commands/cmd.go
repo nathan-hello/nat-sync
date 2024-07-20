@@ -22,19 +22,10 @@ type Command struct {
 	Sub     SubCommand
 }
 
-func (c *Command) ExecutePlayer(player players.Player) (string, error) {
-	switch player.GetPlayerType() {
-	case utils.TargetMpv:
-		return c.Sub.ToMpv()
-	}
-	return "", nil
-}
-
 type SubCommand interface {
 	ToBits() ([]byte, error)
-	ToMpv() (string, error)
 
-	ExecuteClient() ([]byte, error) // []byte is the response of the command
+	ExecuteClient(players.Player) ([]byte, error)
 	ExecuteServer() ([]byte, error)
 
 	NewFromBits([]byte) error
@@ -76,7 +67,6 @@ func New[T []byte | string](i T) (*Command, error) {
 		if err != nil {
 			return nil, err
 		}
-		cmd.UserId = 1000
 		return cmd, nil
 	case string:
 		cmd, err := newCmdFromString(t)
@@ -140,6 +130,14 @@ func (cmd *Command) ToBits() ([]byte, error) {
 
 	// utils.DebugLogger.Printf("decoded bytes: %b ", finalBits.Bytes())
 	return finalBits.Bytes(), nil
+}
+
+func (c *Command) ExecutePlayer(player players.Player) ([]byte, error) {
+	switch player.GetPlayerType() {
+	case utils.TargetMpv:
+		return c.Sub.ExecuteClient(player)
+	}
+	return nil, nil
 }
 
 func newCmdFromBits(bits []byte) (*Command, error) {

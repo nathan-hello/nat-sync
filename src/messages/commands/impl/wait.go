@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/nathan-hello/nat-sync/src/players"
 	"github.com/nathan-hello/nat-sync/src/utils"
 )
 
@@ -16,7 +17,9 @@ type Wait struct {
 	Secs uint8
 }
 
-func (c *Wait) ExecuteClient() ([]byte, error) { return nil, nil }
+func (c *Wait) ExecuteClient(p players.Player) ([]byte, error) {
+	return nil, nil
+}
 
 func (c *Wait) ExecuteServer() ([]byte, error) {
 	time.Sleep(time.Duration(c.Secs) * time.Second)
@@ -54,6 +57,8 @@ func (c *Wait) NewFromString(s []string) error {
 	init := false
 	for _, v := range s {
 		v = strings.ToLower(v)
+		v = strings.TrimPrefix(v, "-")
+		v = strings.TrimPrefix(v, "-")
 		switch {
 		case strings.HasPrefix(v, "secs="):
 			flag, _ := strings.CutPrefix(v, "secs=")
@@ -75,8 +80,4 @@ func (c *Wait) NewFromString(s []string) error {
 	}
 
 	return nil
-}
-
-func (c *Wait) ToMpv() (string, error) {
-	return "", nil
 }

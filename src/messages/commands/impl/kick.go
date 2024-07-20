@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/nathan-hello/nat-sync/src/players"
 	"github.com/nathan-hello/nat-sync/src/utils"
 )
 
@@ -15,7 +16,10 @@ type Kick struct {
 	HideMsg bool
 }
 
-func (c *Kick) ExecuteClient() ([]byte, error) { return nil, nil }
+func (c *Kick) ExecuteClient(p players.Player) ([]byte, error) {
+
+	return nil, nil
+}
 func (c *Kick) ExecuteServer() ([]byte, error) { return nil, nil }
 func (c *Kick) IsEchoed() bool                 { return false }
 
@@ -42,6 +46,8 @@ func (c *Kick) NewFromBits(bits []byte) error {
 func (c *Kick) NewFromString(s []string) error {
 	for _, v := range s {
 		v = strings.ToLower(v)
+		v = strings.TrimPrefix(v, "-")
+		v = strings.TrimPrefix(v, "-")
 		switch {
 		case strings.HasPrefix(v, "userid="):
 			flag, _ := strings.CutPrefix(v, "userid=")
@@ -109,8 +115,4 @@ func (c *Kick) ToBits() ([]byte, error) {
 	}
 
 	return bits.Bytes(), nil
-}
-
-func (c *Kick) ToMpv() (string, error) {
-	return "", nil // not a player command!
 }

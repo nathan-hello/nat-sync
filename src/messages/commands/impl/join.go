@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/nathan-hello/nat-sync/src/players"
 	"github.com/nathan-hello/nat-sync/src/utils"
 )
 
@@ -13,7 +14,10 @@ type Join struct {
 	RoomId uint16
 }
 
-func (c *Join) ExecuteClient() ([]byte, error) { return nil, nil }
+func (c *Join) ExecuteClient(p players.Player) ([]byte, error) {
+
+	return nil, nil
+}
 func (c *Join) ExecuteServer() ([]byte, error) { return nil, nil }
 
 func (c *Join) IsEchoed() bool { return false }
@@ -33,6 +37,8 @@ func (c *Join) NewFromBits(bits []byte) error {
 func (c *Join) NewFromString(s []string) error {
 	for _, v := range s {
 		v = strings.ToLower(v)
+		v = strings.TrimPrefix(v, "-")
+		v = strings.TrimPrefix(v, "-")
 		switch {
 		case strings.HasPrefix(v, "roomid="):
 			flag, _ := strings.CutPrefix(v, "roomid=")
@@ -58,8 +64,4 @@ func (c *Join) ToBits() ([]byte, error) {
 	binary.BigEndian.PutUint16(bits, c.RoomId)
 
 	return bits, nil
-}
-
-func (c *Join) ToMpv() (string, error) {
-	return "", nil // not a player command!
 }
