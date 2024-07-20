@@ -13,6 +13,7 @@ import (
 
 type ServerParams struct {
 	ServerAddress string
+	Rooms         []Room
 }
 
 func CreateServer(p *ServerParams) error {

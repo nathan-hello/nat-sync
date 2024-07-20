@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -23,13 +22,14 @@ var (
 )
 
 func main() {
-	args := flag.NewFlagSet("natsync", flag.ExitOnError)
-	_ = args.String("client", "4000", "Create a client to join natsync servers")
-	_ = args.String("server", "4000", "Become a server for natsync clients")
+	args, err := utils.ParseArgs()
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	utils.InitLogger()
 
-	err := server.CreateServer(&server.ServerParams{ServerAddress: serverAddr})
+	err = server.CreateServer(&server.ServerParams{ServerAddress: serverAddr})
 	if err != nil {
 		utils.ErrorLogger.Fatalf("server could not be started. err: %s", err)
 	}

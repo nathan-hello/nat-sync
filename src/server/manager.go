@@ -5,6 +5,12 @@ import (
 	"sync"
 )
 
+type Room struct {
+	Id       uint8
+	Name     string
+	Password string
+}
+
 type Client struct {
 	Name string
 	Id   uint16

@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"flag"
+	"fmt"
 	"net"
 	"os"
 	"strconv"
@@ -13,7 +14,6 @@ import (
 
 // Config is generated when the program launches.
 // It should never be called until InitConfig() is done.
-var config FullConfig
 var initialized bool
 
 type Room struct {
@@ -28,8 +28,14 @@ type Client struct {
 	Rooms []Room `json:"rooms"`
 }
 
+type ServerRoom struct {
+	Name              string `json:"name"`
+	EncryptedPassword string `json:"encrypted_password"`
+}
+
 type Server struct {
-	Port string `json:"port"`
+	Port  string       `json:"port"`
+	Rooms []ServerRoom `json:"rooms"`
 }
 
 type argsCommandLine struct {
@@ -37,21 +43,12 @@ type argsCommandLine struct {
 	ConnectIp   string
 	Username    string
 	StartServer bool
-	ServerPort  int
+	ServerPort  string
 }
 
 type argsConfigFile struct {
 	Client Client `json:"client"`
 	Server Server `json:"server"`
-}
-
-type FullConfig struct {
-	StartClient bool
-	ConnectIp   string
-	ConnectPort int
-	Username    string
-	StartServer bool
-	ServerPort  int
 }
 
 func ReadConfig(configPath string) *argsConfigFile {
@@ -67,47 +64,78 @@ func ReadConfig(configPath string) *argsConfigFile {
 	return &conf
 }
 
-func readCmdLineArgs(flags *flag.FlagSet) *argsCommandLine {
-	asdf := &argsCommandLine{
-		StartClient: true,
-		Username:    randomString(8),
-		ConnectIp:   "127.0.0.1",
-		StartServer: false,
-		ServerPort:  1412,
-	}
-	var args []string
-	for _, v := range args {
-		v = strings.ToLower(v)
-		v = strings.TrimPrefix(v, "-")
-		v = strings.TrimPrefix(v, "-")
-		switch {
-		case strings.HasPrefix(v, "connect="):
-			flag, _ := strings.CutPrefix(v, "connect=")
-			flag, _ = strings.CutPrefix(flag, "\"")
-			flag, _ = strings.CutSuffix(flag, "\"")
-			ok := net.ParseIP(flag)
-			if ok == nil {
-				UserLogger.Printf("ip is not valid. (did you try adding :<port> without --port?) ip: %s", flag)
-			}
-			asdf.ConnectIp = flag
-		case strings.HasPrefix(v, "no-client"):
-			asdf.StartClient = false
-		case strings.HasPrefix(v, "start-server"):
-			asdf.StartServer = true
-		case strings.HasPrefix(v, "server-port"):
-			flag, _ := strings.CutPrefix(v, "server-port=")
-			flag, _ = strings.CutPrefix(flag, "\"")
-			flag, _ = strings.CutSuffix(flag, "\"")
-			i, err := strconv.Atoi(flag)
-			if err != nil {
-				UserLogger.Printf("port is not valid. port: %s", flag)
-			}
-			asdf.ServerPort = i
+func ParseArgs() (*argsCommandLine, error) {
+	asdf := &argsCommandLine{}
+	fs := flag.NewFlagSet("nat-sync", flag.ContinueOnError)
 
+	connect := fs.String("connect", "", "IP address to connect to")
+	connectShort := fs.String("c", "", "IP address to connect to (shorthand)")
+
+	username := fs.String("username", "", "Username")
+	usernameShort := fs.String("u", "", "Username (shorthand)")
+
+	noClient := fs.Bool("no-client", false, "Disable client start")
+	noClientShort := fs.Bool("n", false, "Disable client start (shorthand)")
+
+	startServer := fs.Bool("start-server", false, "Start the server")
+	startServerShort := fs.Bool("s", false, "Start the server (shorthand)")
+
+	serverPort := fs.String("server-port", "", "Port for the server")
+	serverPortShort := fs.String("p", "", "Port for the server (shorthand)")
+
+	help := fs.Bool("help", false, "Print this menu")
+	helpShort := fs.Bool("h", false, "Print this menu")
+
+	if *help || *helpShort || len(fs.Args()) == 0 {
+		fs.PrintDefaults()
+		return nil, nil
+	}
+
+	// Use the value from either the long or short flag
+	connectVal := *connect
+	if *connectShort != "" {
+		connectVal = *connectShort
+	}
+
+	var ip string
+	if connectVal != "" {
+		flag := strings.Trim(connectVal, "\"")
+		ok := net.ParseIP(flag)
+		if ok == nil {
+			fmt.Printf("IP is not valid. (did you try adding :<port> without --port?) IP: %s\n", flag)
+		}
+		ip = flag
+	}
+
+	serverPortVal := *serverPort
+	if *serverPortShort != "" {
+		serverPortVal = *serverPortShort
+	}
+
+	user := *username
+	if *usernameShort != "" {
+		user = *usernameShort
+	}
+
+	var sp string
+	if serverPortVal != "" {
+		flag := strings.Trim(serverPortVal, "\"")
+		flag = strings.TrimPrefix(flag, ":")
+		_, err := strconv.Atoi(flag)
+		if err != nil {
+			return nil, fmt.Errorf("port is not valid. port: %s", flag)
 		}
 
+		sp = flag
 	}
-	return asdf
+
+	asdf.ServerPort = sp
+	asdf.StartClient = !*noClient && !*noClientShort
+	asdf.StartServer = *startServer || *startServerShort
+	asdf.ConnectIp = ip
+	asdf.Username = user
+
+	return asdf, nil
 }
 
 func randomString(length int) string {
@@ -115,10 +143,6 @@ func randomString(length int) string {
 	rand.Read(randomBytes)
 	randomString := base64.URLEncoding.EncodeToString(randomBytes)[:length]
 	return randomString
-}
-
-func Config() *FullConfig {
-	return &config
 }
 
 func readConfigFile() {
