@@ -2,6 +2,7 @@ package players
 
 import (
 	"bufio"
+	"io"
 	"net"
 	"os/exec"
 	"time"
@@ -17,6 +18,7 @@ type mpv struct {
 	SocketPath string
 	Conn       net.Conn
 	ToPlayer   chan messages.Message
+	Exec       *exec.Cmd
 }
 
 func newMpv() *mpv {
@@ -31,16 +33,30 @@ func newMpv() *mpv {
 	}
 }
 
-func (v *mpv) launch() error {
+func (v *mpv) Launch() error {
 	cmd := exec.Command(v.LaunchCmd, v.LaunchArg...)
 	err := cmd.Start()
 	if err != nil {
 		return err
 	}
-	return nil
+	err = v.connect()
+	v.Exec = cmd
+	return err
 }
 
-func (v *mpv) connect() {
+func (p *mpv) AppendQueue(cmd messages.Message) {
+	p.ToPlayer <- cmd
+}
+
+func (p *mpv) Quit() {
+	if p.Conn != nil {
+		p.Conn.Close()
+	}
+	p.Exec.Process.Kill()
+	close(p.ToPlayer)
+}
+
+func (v *mpv) connect() error {
 	const maxRetries = 10
 	var conn net.Conn
 	var err error
@@ -53,12 +69,14 @@ func (v *mpv) connect() {
 		}
 
 		if i == maxRetries-1 {
-			utils.ErrorLogger.Printf("connecting to socket after %d retries: %s", maxRetries, err)
-			return
+			return err
 		}
 	}
+	utils.DebugLogger.Printf("new conn at %#v\n", conn)
+
 	go v.transmit(conn)
 	go v.receive(conn)
+	return nil
 }
 
 func (v *mpv) transmit(conn net.Conn) {
@@ -84,16 +102,14 @@ func (v *mpv) receive(conn net.Conn) {
 	defer conn.Close()
 	reader := bufio.NewReader(conn)
 	for {
-		// TODO: do something interesting with mpv responses
 		response, err := reader.ReadString('\n')
+		if err == io.EOF {
+			return
+		}
 		if err != nil {
 			utils.ErrorLogger.Printf("reading from socket: %s", err)
 			break
 		}
 		utils.NoticeLogger.Printf("mpv response: %s\n", response)
 	}
-}
-
-func (p *mpv) AppendQueue(cmd messages.Message) {
-	p.ToPlayer <- cmd
 }

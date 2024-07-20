@@ -54,3 +54,7 @@ func ErrBadString(s string, err error) error {
 func ErrBadMsgType(b []byte) error {
 	return fmt.Errorf("type bit does not match anything we got: %b", b)
 }
+
+func ErrTimeout(s string) error {
+	return fmt.Errorf("connection to %s timedout", s)
+}

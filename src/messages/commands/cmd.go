@@ -33,11 +33,13 @@ type SubCommand interface {
 
 	// True  if each client in room runs the command themselves, individually (i.e. Pause).
 	// False if admin-related things, such as Kick and Join.
-	// If false, ExecuteClient() or ExecuteServer() will return a response in []byte and echo that.
+	// If false, ExecuteServer() will return a response in []byte the server will echo that.
+	// TODO: If false, ExecuteClient() will return a response in []byte and do nothing.
 	IsEchoed() bool
 }
 
 var Head = struct {
+	Ack    cmdHead
 	Change cmdHead
 	Kick   cmdHead
 	Join   cmdHead
@@ -47,14 +49,15 @@ var Head = struct {
 	Stop   cmdHead
 	Wait   cmdHead
 }{
-	Change: 1,
-	Kick:   2,
-	Join:   3,
-	Pause:  4,
-	Play:   5,
-	Seek:   6,
-	Stop:   7,
-	Wait:   8,
+	Ack:    1,
+	Change: 2,
+	Kick:   3,
+	Join:   4,
+	Pause:  5,
+	Play:   6,
+	Seek:   7,
+	Stop:   8,
+	Wait:   9,
 }
 
 func New[T []byte | string](i T) (*Command, error) {
@@ -217,6 +220,8 @@ func newCmdFromString(s string) (*Command, error) {
 // Register new commands here
 func getSubFromHead(head cmdHead) (SubCommand, error) {
 	switch head {
+	case Head.Ack:
+		return &impl.Ack{}, nil
 	case Head.Change:
 		return &impl.Change{}, nil
 	case Head.Kick:
@@ -240,6 +245,8 @@ func getSubFromHead(head cmdHead) (SubCommand, error) {
 // Register new strings here
 func getHeadFromString(s string) (cmdHead, error) {
 	switch strings.ToLower(s) {
+	case "ack":
+		return Head.Ack, nil
 	case "change":
 		return Head.Change, nil
 	case "kick":

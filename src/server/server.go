@@ -2,10 +2,10 @@ package server
 
 import (
 	"bufio"
+	"io"
 	"net"
 
 	"github.com/nathan-hello/nat-sync/src/messages"
-	"github.com/nathan-hello/nat-sync/src/messages/ack"
 	"github.com/nathan-hello/nat-sync/src/messages/commands"
 	"github.com/nathan-hello/nat-sync/src/utils"
 )
@@ -44,6 +44,9 @@ func receive(conn net.Conn, msgChan chan messages.Message) {
 	reader := bufio.NewReader(conn)
 	for {
 		msgs, err := messages.WaitReader(reader)
+		if err == io.EOF {
+			return
+		}
 		if err != nil {
 			utils.ErrorLogger.Printf("server got a bad message. error: %s\n", err)
 		}
@@ -56,34 +59,27 @@ func receive(conn net.Conn, msgChan chan messages.Message) {
 func transmit(conn net.Conn, msgChan chan messages.Message) {
 	for v := range msgChan {
 		var response []byte
+		var err error
 		switch msg := v.(type) {
 		case *commands.Command:
-			r, err := msg.Sub.ExecuteServer()
+			response, err = msg.Sub.ExecuteServer()
 			if err != nil {
-				utils.ErrorLogger.Printf("encoding command. cmd: %#v\n err:%s", msg, err)
+				utils.ErrorLogger.Printf("running cmd on server failed. cmd: %#v\n err:%s", msg, err)
 			}
-			response = r
-
 			if msg.Sub.IsEchoed() {
-				r, err := msg.ToBits()
+				response, err = msg.ToBits()
 				if err != nil {
 					utils.ErrorLogger.Printf("encoding command. cmd: %#v\n err:%s", msg, err)
 				}
-				response = r //overwrite r if IsEchoed()
 			}
 
-		case *ack.Ack:
-			ack, err := ack.New("200")
-			if err != nil {
-				utils.ErrorLogger.Printf("creating new ack message. err: %s", err)
+			if len(response) > 0 {
+				utils.DebugLogger.Printf("Sending bits: %b\n", response)
+				conn.Write(response)
 			}
-			r, err := ack.ToBits()
-			if err != nil {
-				utils.ErrorLogger.Printf("encoding ack. err: %s", err)
-			}
-			response = r
+		default:
+			utils.ErrorLogger.Printf("server got a non-command message: %#v\n", msg)
+
 		}
-		utils.DebugLogger.Printf("Sending bits: %b\n", response)
-		conn.Write(response)
 	}
 }

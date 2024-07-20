@@ -1,7 +1,6 @@
 package players
 
 import (
-	"errors"
 	"net"
 
 	"github.com/nathan-hello/nat-sync/src/messages"
@@ -9,32 +8,24 @@ import (
 )
 
 type Player interface {
-	launch() error
-	connect()
+	connect() error
 	transmit(conn net.Conn)
 	receive(conn net.Conn)
 
+	Quit()
+	Launch() error
 	AppendQueue(messages.Message)
 }
 
-func New(p utils.PlayerTargets) (Player, error) {
+func New(p utils.PlayerTargets) Player {
 	switch p {
 	case utils.TargetMpv:
-		mpv := newMpv()
-
-		err := mpv.launch()
-		if err != nil {
-			return nil, err
-		}
-
-		go mpv.connect()
-
-		return mpv, nil
+		return newMpv()
 	case utils.TargetVlc:
-		return nil, utils.ErrNotImplemented("vlc")
+		return nil // TODO:
 	case utils.TargetTest:
-		return nil, nil
+		return nil // TODO:
 	}
 
-	return nil, errors.New("newplayer was given incorrect .Player arg")
+	return nil
 }

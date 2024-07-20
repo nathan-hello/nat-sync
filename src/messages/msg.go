@@ -6,7 +6,6 @@ import (
 	"io"
 	"strings"
 
-	"github.com/nathan-hello/nat-sync/src/messages/ack"
 	"github.com/nathan-hello/nat-sync/src/messages/commands"
 	"github.com/nathan-hello/nat-sync/src/utils"
 )
@@ -21,13 +20,6 @@ func New[T string | []byte](i T) ([]Message, error) {
 	case []byte:
 		if commands.IsCommand(t) {
 			m, err := commands.New(t)
-			if err != nil {
-				return nil, err
-			}
-			return append(msgs, m), nil
-		}
-		if ack.IsAck(t) {
-			m, err := ack.New(t)
 			if err != nil {
 				return nil, err
 			}
@@ -63,6 +55,9 @@ func WaitReader(reader io.Reader) ([]Message, error) {
 	// because it is a read in the gopher's language, it advances the reader two bytes
 	// we will add those bytes back in just a second
 	_, err := io.ReadFull(reader, lengthBytes)
+	if err == io.EOF {
+		return nil, err
+	}
 	if err != nil {
 		return nil, fmt.Errorf("connection closed or error reading length bytes: %#v", lengthBytes)
 	}

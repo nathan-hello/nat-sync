@@ -45,6 +45,9 @@ func receive(conn net.Conn, p *ClientParams) {
 	reader := bufio.NewReader(conn)
 	for {
 		msgs, err := messages.WaitReader(reader)
+		if err == io.EOF {
+			return
+		}
 		if err != nil {
 			utils.ErrorLogger.Printf("client got a bad message. error: %s\n", err)
 		}
@@ -58,8 +61,21 @@ func transmit(conn net.Conn, p *ClientParams) {
 	scanner := bufio.NewScanner(p.InputReader)
 	for scanner.Scan() { // this blocks the terminal
 		text := scanner.Text()
-
-		// utils.DebugLogger.Printf("new reader text: %s\n", text)
+		if players.IsPlayerCommand(text) {
+			utils.DebugLogger.Println("local cmd found")
+			playerCmd, err := players.NewPlayerCmd(text, p.Player)
+			if err != nil {
+				utils.ErrorLogger.Println(err)
+				continue
+			}
+			newPlayer, err := playerCmd.Sub.ExecuteClient()
+			if err != nil {
+				utils.ErrorLogger.Println(err)
+				continue
+			}
+			p.Player = newPlayer
+			continue
+		}
 
 		msgs, err := messages.New(text)
 		if err != nil {

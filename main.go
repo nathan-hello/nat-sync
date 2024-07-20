@@ -34,8 +34,8 @@ func main() {
 		utils.ErrorLogger.Fatalf("server could not be started. err: %s", err)
 	}
 
-	player, err := players.New(utils.TargetMpv)
-
+	player := players.New(utils.TargetMpv)
+	err = player.Launch()
 	if err != nil {
 		log.Fatalf("could not start video player for reason: %s\n", err)
 	}
