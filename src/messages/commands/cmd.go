@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/nathan-hello/nat-sync/src/messages/commands/impl"
+	"github.com/nathan-hello/nat-sync/src/players"
 	"github.com/nathan-hello/nat-sync/src/utils"
 )
 
@@ -19,6 +20,14 @@ type Command struct {
 	UserId  uint16
 	Content []byte
 	Sub     SubCommand
+}
+
+func (c *Command) ExecutePlayer(player players.Player) (string, error) {
+	switch player.GetPlayerType() {
+	case utils.TargetMpv:
+		return c.Sub.ToMpv()
+	}
+	return "", nil
 }
 
 type SubCommand interface {

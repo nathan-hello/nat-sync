@@ -7,11 +7,13 @@ import (
 	"strings"
 
 	"github.com/nathan-hello/nat-sync/src/messages/commands"
+	"github.com/nathan-hello/nat-sync/src/players"
 	"github.com/nathan-hello/nat-sync/src/utils"
 )
 
 type Message interface {
 	ToBits() ([]byte, error)
+	ExecutePlayer(players.Player) (string, error)
 }
 
 func New[T string | []byte](i T) ([]Message, error) {

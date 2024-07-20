@@ -4,7 +4,6 @@ import (
 	"database/sql"
 
 	_ "github.com/mattn/go-sqlite3"
-	"github.com/nathan-hello/nat-sync/src/utils"
 )
 
 var db *Queries
@@ -13,7 +12,7 @@ var db *Queries
 // db calls throughout the program. Also, it means we
 // don't have to handle an err on said subsequent db calls
 func DbInit() error {
-	var d, err = sql.Open("sqlite3", utils.Config().DB_URI)
+	var d, err = sql.Open("sqlite3", ":memory")
 	if err != nil {
 		return err
 	}

@@ -3,7 +3,6 @@ package players
 import (
 	"net"
 
-	"github.com/nathan-hello/nat-sync/src/messages"
 	"github.com/nathan-hello/nat-sync/src/utils"
 )
 
@@ -14,10 +13,11 @@ type Player interface {
 
 	Quit()
 	Launch() error
-	AppendQueue(messages.Message)
+	AppendQueue(PlayerExecutor)
+	GetPlayerType() utils.LocalTarget
 }
 
-func New(p utils.PlayerTargets) Player {
+func New(p utils.LocalTarget) Player {
 	switch p {
 	case utils.TargetMpv:
 		return newMpv()

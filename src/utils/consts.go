@@ -6,14 +6,12 @@ type MsgType uint8
 
 const (
 	MsgCommand MsgType = iota
-	MsgAck     MsgType = iota
-	MsgLocal   MsgType = iota
 )
 
-type PlayerTargets string
+type LocalTarget string
 
 const (
-	TargetTest PlayerTargets = ""
-	TargetMpv  PlayerTargets = "mpv"
-	TargetVlc  PlayerTargets = "vlc"
+	TargetTest LocalTarget = ""
+	TargetMpv  LocalTarget = "mpv"
+	TargetVlc  LocalTarget = "vlc"
 )

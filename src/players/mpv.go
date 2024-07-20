@@ -7,29 +7,33 @@ import (
 	"os/exec"
 	"time"
 
-	"github.com/nathan-hello/nat-sync/src/messages"
-	"github.com/nathan-hello/nat-sync/src/messages/commands"
 	"github.com/nathan-hello/nat-sync/src/utils"
 )
+
+type PlayerExecutor interface {
+	ExecutePlayer(Player) (string, error)
+}
 
 type mpv struct {
 	LaunchCmd  string
 	LaunchArg  []string
-	SocketPath string
-	Conn       net.Conn
-	ToPlayer   chan messages.Message
 	Exec       *exec.Cmd
+	Conn       net.Conn
+	SocketPath string
+	PlayerType utils.LocalTarget
+	ToPlayer   chan PlayerExecutor
 }
 
 func newMpv() *mpv {
 	socketPath := "/tmp/nat-sync-mpv-socket"
-	c := make(chan messages.Message)
+	c := make(chan PlayerExecutor)
 
 	return &mpv{
 		LaunchCmd:  "mpv",
 		LaunchArg:  []string{"--idle", "--force-window", "--input-ipc-server=" + socketPath},
 		SocketPath: socketPath,
 		ToPlayer:   c,
+		PlayerType: utils.TargetMpv,
 	}
 }
 
@@ -44,7 +48,7 @@ func (v *mpv) Launch() error {
 	return err
 }
 
-func (p *mpv) AppendQueue(cmd messages.Message) {
+func (p *mpv) AppendQueue(cmd PlayerExecutor) {
 	p.ToPlayer <- cmd
 }
 
@@ -81,19 +85,18 @@ func (v *mpv) connect() error {
 
 func (v *mpv) transmit(conn net.Conn) {
 	for m := range v.ToPlayer {
-		switch msg := m.(type) {
-		case *commands.Command:
-			mpvStr, err := msg.Sub.ToMpv()
-			if err != nil {
-				utils.ErrorLogger.Printf("parsing command to player format. cmd: %#v err: %s", msg.Sub, err)
-				break
-			}
-			utils.DebugLogger.Printf("sending cmd to player. cmd: %s", mpvStr)
-			_, err = conn.Write([]byte(mpvStr + "\n"))
-			if err != nil {
-				utils.ErrorLogger.Printf("sending command to player socket. cmd: %#v err: %s", msg.Sub, err)
-				break
-			}
+		mpvStr, err := m.ExecutePlayer(v)
+		if err != nil {
+			utils.ErrorLogger.Printf("parsing command to player format. cmd: %#v err: %s", m, err)
+			break
+		}
+
+		utils.DebugLogger.Printf("sending cmd to player. cmd: %s", mpvStr)
+
+		_, err = conn.Write([]byte(mpvStr + "\n"))
+		if err != nil {
+			utils.ErrorLogger.Printf("sending command to player socket. cmd: %#v err: %s", m, err)
+			break
 		}
 	}
 }
@@ -112,4 +115,8 @@ func (v *mpv) receive(conn net.Conn) {
 		}
 		utils.NoticeLogger.Printf("mpv response: %s\n", response)
 	}
+}
+
+func (v *mpv) GetPlayerType() utils.LocalTarget {
+	return v.PlayerType
 }

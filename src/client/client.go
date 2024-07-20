@@ -61,8 +61,8 @@ func transmit(conn net.Conn, p *ClientParams) {
 	scanner := bufio.NewScanner(p.InputReader)
 	for scanner.Scan() { // this blocks the terminal
 		text := scanner.Text()
-		if players.IsPlayerCommand(text) {
-			playerCmd, err := players.NewPlayerCmd(text, p.Player)
+		if IsLocalCommand(text) {
+			playerCmd, err := NewLocalCmd(text, p.Player)
 			if err != nil {
 				utils.ErrorLogger.Println(err)
 				continue

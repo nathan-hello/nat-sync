@@ -22,7 +22,7 @@ var (
 )
 
 func main() {
-	args, err := utils.ParseArgs()
+	_, err := utils.ParseArgs()
 	if err != nil {
 		log.Fatal(err)
 	}

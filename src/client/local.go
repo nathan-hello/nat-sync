@@ -1,37 +1,36 @@
-package players
+package client
 
 import (
 	"errors"
 	"strings"
 
+	"github.com/nathan-hello/nat-sync/src/players"
 	"github.com/nathan-hello/nat-sync/src/utils"
 )
 
 type playHead uint8
 
 type Local struct {
-	Length  uint16
 	Type    utils.MsgType
 	Head    playHead
 	Version uint16
-	UserId  uint16
 	Sub     SubLocal
 }
 
 type SubLocal interface {
-	ExecuteClient() (Player, error)
+	ExecuteClient() (players.Player, error)
 	NewFromString([]string) error
 }
 
 var Head = struct {
-	LaunchPlayer playHead
-	QuitPlayer   playHead
+	PlayerOpen playHead
+	PlayerQuit playHead
 }{
-	LaunchPlayer: 1,
-	QuitPlayer:   2,
+	PlayerOpen: 1,
+	PlayerQuit: 2,
 }
 
-func NewPlayerCmd(i string, player Player) (*Local, error) {
+func NewLocalCmd(i string, player players.Player) (*Local, error) {
 	i = strings.TrimPrefix(i, "$")
 	parts := strings.Fields(i)
 
@@ -63,34 +62,34 @@ func NewPlayerCmd(i string, player Player) (*Local, error) {
 }
 
 // TODO: stop assumption that mpv is the only player
-type LaunchPlayer struct {
-	CurrentPlayer Player
-	Target        utils.PlayerTargets
+type PlayerOpen struct {
+	CurrentPlayer players.Player
+	Target        utils.LocalTarget
 }
 
-func (l *LaunchPlayer) NewFromString(s []string) error {
+func (l *PlayerOpen) NewFromString(s []string) error {
 	l.Target = utils.TargetMpv
 	return nil
 }
 
-func (l *LaunchPlayer) ExecuteClient() (Player, error) {
+func (l *PlayerOpen) ExecuteClient() (players.Player, error) {
 	if l.CurrentPlayer != nil {
 		l.CurrentPlayer.Quit()
 	}
-	asdf := New(l.Target)
+	asdf := players.New(l.Target)
 	asdf.Launch()
 	return asdf, nil
 }
 
-type QuitPlayer struct {
-	Player Player
+type PlayerQuit struct {
+	Player players.Player
 }
 
-func (l *QuitPlayer) NewFromString(s []string) error {
+func (l *PlayerQuit) NewFromString(s []string) error {
 	return nil
 }
 
-func (l *QuitPlayer) ExecuteClient() (Player, error) {
+func (l *PlayerQuit) ExecuteClient() (players.Player, error) {
 	if l.Player != nil {
 		l.Player.Quit()
 		return nil, nil
@@ -99,12 +98,12 @@ func (l *QuitPlayer) ExecuteClient() (Player, error) {
 }
 
 // Register new commands here
-func newSub(head playHead, player Player) (SubLocal, error) {
+func newSub(head playHead, player players.Player) (SubLocal, error) {
 	switch head {
-	case Head.LaunchPlayer:
-		return &LaunchPlayer{CurrentPlayer: player}, nil
-	case Head.QuitPlayer:
-		return &QuitPlayer{Player: player}, nil
+	case Head.PlayerOpen:
+		return &PlayerOpen{CurrentPlayer: player}, nil
+	case Head.PlayerQuit:
+		return &PlayerQuit{Player: player}, nil
 	}
 	return nil, utils.ErrNoCmdHeadFound(uint8(head))
 }
@@ -113,15 +112,15 @@ func newSub(head playHead, player Player) (SubLocal, error) {
 func getHeadFromString(s string) (playHead, error) {
 	switch strings.ToLower(s) {
 	case "launch":
-		return Head.LaunchPlayer, nil
+		return Head.PlayerOpen, nil
 	case "quit":
-		return Head.QuitPlayer, nil
+		return Head.PlayerQuit, nil
 	default:
 		return 0, utils.ErrBadArgs([]string{s})
 	}
 
 }
 
-func IsPlayerCommand(s string) bool {
-	return strings.HasPrefix(s, "$")
+func IsLocalCommand(s string) bool {
+	return strings.HasPrefix(s, "/")
 }
