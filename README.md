@@ -68,3 +68,7 @@ OPTIONS, IDEALLY:
 - args to video player
 - DO_NOT_USE_OR_YOU_WILL_BE_FIRED_disable_tls
 - bring_your_own_cert_path
+
+
+NOTES:
+    - MPV requires [yt-dlp](https://github.com/yt-dlp/yt-dlp) to be installed and in PATH to play youtube videos. Tested version for this is 2024.08.01. Minimum version unknown.
