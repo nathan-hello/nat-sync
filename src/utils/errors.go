@@ -12,7 +12,10 @@ var (
 	ErrUsernameBlank = errors.New("username string in command was blank")
 )
 
-var ErrImpossible = errors.New("this error is here because go's type system is just ok")
+var (
+	ErrImpossible        = errors.New("this error is here because go's type system is just ok")
+	ErrPlayerAlreadyDead = errors.New("player is already dead")
+)
 
 func ErrDecodeType(bits []byte) error {
 	return fmt.Errorf("could not decode the type from the following bytes: %b", bits)

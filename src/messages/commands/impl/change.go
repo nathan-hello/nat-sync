@@ -42,6 +42,7 @@ func (c *Change) ExecuteClient(p players.Player) ([]byte, error) {
 	}
 	return mpvCmd, nil
 }
+
 func (c *Change) ExecuteServer() ([]byte, error) { return nil, nil }
 func (c *Change) IsEchoed() bool                 { return true }
 
@@ -76,7 +77,7 @@ func (c *Change) NewFromBits(bits []byte) error {
 // ["Uri=\"file:/home/catlover/kitty.jpeg\"", "--Action=\"append\""]
 func (c *Change) NewFromString(s []string) error {
 	for _, v := range s {
-		v = strings.ToLower(v)
+		// v = strings.ToLower(v) // uri's are case sensitive!
 		v = strings.TrimPrefix(v, "-")
 		v = strings.TrimPrefix(v, "-")
 		switch {
@@ -87,6 +88,7 @@ func (c *Change) NewFromString(s []string) error {
 			c.Uri = flag
 			c.UriLength = uint32(len(flag))
 		case strings.HasPrefix(v, "action="):
+			v = strings.ToLower(v)
 			flag, _ := strings.CutPrefix(v, "action=")
 			flag, _ = strings.CutPrefix(flag, "\"")
 			flag, _ = strings.CutSuffix(flag, "\"")

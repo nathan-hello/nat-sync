@@ -1,7 +1,6 @@
 package client
 
 import (
-	"errors"
 	"strings"
 
 	"github.com/nathan-hello/nat-sync/src/players"
@@ -94,7 +93,7 @@ func (l *PlayerQuit) ExecuteClient() (players.Player, error) {
 		l.Player.Quit()
 		return nil, nil
 	}
-	return nil, errors.New("player is already dead")
+	return nil, utils.ErrPlayerAlreadyDead
 }
 
 // Register new commands here
