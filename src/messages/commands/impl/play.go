@@ -3,7 +3,7 @@ package impl
 import (
 	"fmt"
 
-	"github.com/nathan-hello/nat-sync/src/players"
+	"github.com/nathan-hello/nat-sync/src/client/players"
 )
 
 type Play struct {

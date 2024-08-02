@@ -8,7 +8,7 @@ import (
 	"syscall"
 
 	"github.com/nathan-hello/nat-sync/src/client"
-	"github.com/nathan-hello/nat-sync/src/players"
+	"github.com/nathan-hello/nat-sync/src/client/players"
 	"github.com/nathan-hello/nat-sync/src/server"
 	"github.com/nathan-hello/nat-sync/src/utils"
 )

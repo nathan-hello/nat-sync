@@ -1,6 +1,6 @@
 package impl
 
-import "github.com/nathan-hello/nat-sync/src/players"
+import "github.com/nathan-hello/nat-sync/src/client/players"
 
 type Quitter interface {
 	Quit()

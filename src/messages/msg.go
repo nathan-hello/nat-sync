@@ -6,8 +6,8 @@ import (
 	"io"
 	"strings"
 
+	"github.com/nathan-hello/nat-sync/src/client/players"
 	"github.com/nathan-hello/nat-sync/src/messages/commands"
-	"github.com/nathan-hello/nat-sync/src/players"
 	"github.com/nathan-hello/nat-sync/src/utils"
 )
 

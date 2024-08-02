@@ -10,17 +10,6 @@ import (
 	"github.com/nathan-hello/nat-sync/src/utils"
 )
 
-// One-method interface because that's all we're
-// using here. Messages interface implements this.
-//
-// This means players package doesn't need to import
-// messages package for the Messages interface.
-// Otherwise, this interface isn't being used for
-// any special composability. Just the lack of import.
-type PlayerExecutor interface {
-	ExecutePlayer(Player) ([]byte, error)
-}
-
 type mpv struct {
 	LaunchCmd  string
 	LaunchArg  []string
