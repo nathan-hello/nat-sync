@@ -7,7 +7,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/nathan-hello/nat-sync/src/client/players"
 	"github.com/nathan-hello/nat-sync/src/utils"
 )
 
@@ -19,23 +18,31 @@ type Seek struct {
 	Secs  uint8
 }
 
-func (c *Seek) ExecuteClient(p players.Player) ([]byte, error) {
+func (c *Seek) ToPlayer(p utils.LocalTarget) ([]byte, error) {
+	secs := uint(c.Hours)*3600 + uint(c.Mins)*60 + uint(c.Secs)
 
-	asdf := MpvJson{}
+	m := MpvJson{Command: []string{"seek", strconv.Itoa(int(secs)), "absolute"}}
 
-	asdf.Command = append(asdf.Command, "pause")
-	asdf.Command = append(asdf.Command, "false")
-
-	mpvCmd, err := json.Marshal(asdf)
+	mpvCmd, err := json.Marshal(m)
 	if err != nil {
 		return nil, err
 	}
 	return mpvCmd, nil
 
 }
-func (c *Seek) ExecuteServer() ([]byte, error) { return nil, nil }
-func (c *Seek) IsEchoed() bool                 { return true }
-func (c *Seek) NewFromBits(bits []byte) error {
+
+func (c *Seek) New(t any) error {
+	switch s := t.(type) {
+	case []byte:
+		return c.newFromBits(s)
+	case []string:
+		return c.newFromString(s)
+	default:
+		return utils.ErrBadType
+	}
+}
+
+func (c *Seek) newFromBits(bits []byte) error {
 	buf := bytes.NewReader(bits)
 
 	if err := binary.Read(buf, binary.BigEndian, &c.Hours); err != nil {
@@ -54,7 +61,7 @@ func (c *Seek) NewFromBits(bits []byte) error {
 // Example:
 // ["Hours=2", "Mins=19", "Secs=0"]
 // ["Uri=\"file:/home/catlover/kitty.jpeg\"", "--IsLocal=true"]
-func (c *Seek) NewFromString(s []string) error {
+func (c *Seek) newFromString(s []string) error {
 
 	init := false
 	for _, v := range s {

@@ -15,6 +15,7 @@ var (
 var (
 	ErrImpossible        = errors.New("this error is here because go's type system is just ok")
 	ErrPlayerAlreadyDead = errors.New("player is already dead")
+	ErrBadType           = errors.New("new function got a type that was not []byte or []string")
 )
 
 func ErrDecodeType(bits []byte) error {

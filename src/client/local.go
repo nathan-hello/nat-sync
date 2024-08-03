@@ -10,7 +10,6 @@ import (
 type playHead uint8
 
 type Local struct {
-	Type    utils.MsgType
 	Head    playHead
 	Version uint16
 	Sub     SubLocal
@@ -54,7 +53,6 @@ func NewLocalCmd(i string, player players.Player) (*Local, error) {
 
 	return &Local{
 		Head:    head,
-		Type:    utils.MsgCommand,
 		Version: utils.CurrentVersion,
 		Sub:     sub,
 	}, nil

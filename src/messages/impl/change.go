@@ -7,7 +7,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/nathan-hello/nat-sync/src/client/players"
 	"github.com/nathan-hello/nat-sync/src/utils"
 )
 
@@ -25,28 +24,33 @@ type Change struct {
 	Uri       string
 }
 
-func (c *Change) ExecuteClient(p players.Player) ([]byte, error) {
-	asdf := MpvJson{}
-
-	asdf.Command = append(asdf.Command, "loadfile")
-	asdf.Command = append(asdf.Command, c.Uri)
+func (c *Change) ToPlayer(p utils.LocalTarget) ([]byte, error) {
+	m := MpvJson{Command: []string{"loadfile", c.Uri}}
 
 	if c.Action == ChgAppend {
-		asdf.Command = append(asdf.Command, "append-play")
+		m.Command = append(m.Command, "append-play")
 	}
-	// if c.Action == ChgImmediate // Immediately playing is the default behavior
 
-	mpvCmd, err := json.Marshal(asdf)
+	mpvCmd, err := json.Marshal(m)
 	if err != nil {
 		return nil, err
 	}
 	return mpvCmd, nil
 }
 
-func (c *Change) ExecuteServer() ([]byte, error) { return nil, nil }
-func (c *Change) IsEchoed() bool                 { return true }
+func (c *Change) New(t any) error {
+	switch s := t.(type) {
+	case []byte:
+		return c.newFromBits(s)
+	case []string:
+		return c.newFromString(s)
 
-func (c *Change) NewFromBits(bits []byte) error {
+	default:
+		return utils.ErrBadType
+	}
+}
+
+func (c *Change) newFromBits(bits []byte) error {
 	buf := bytes.NewReader(bits)
 
 	if err := binary.Read(buf, binary.BigEndian, &c.Action); err != nil {
@@ -75,7 +79,7 @@ func (c *Change) NewFromBits(bits []byte) error {
 // Example:
 // ["Uri=\"asdf.com/cats\"", "--Action=\"immediate\""]
 // ["Uri=\"file:/home/catlover/kitty.jpeg\"", "--Action=\"append\""]
-func (c *Change) NewFromString(s []string) error {
+func (c *Change) newFromString(s []string) error {
 	for _, v := range s {
 		// v = strings.ToLower(v) // uri's are case sensitive!
 		v = strings.TrimPrefix(v, "-")

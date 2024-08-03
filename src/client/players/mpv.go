@@ -18,6 +18,7 @@ type mpv struct {
 	SocketPath string
 	PlayerType utils.LocalTarget
 	ToPlayer   chan PlayerExecutor
+	FromPlayer chan []byte
 }
 
 func newMpv() *mpv {
@@ -74,6 +75,16 @@ func (v *mpv) connect() error {
 	}
 	utils.DebugLogger.Printf("new conn at %#v\n", conn)
 
+	pause := []byte(`{"command": ["observe_property", 1, "pause"]`)
+	play := []byte(` {"command": ["observe_property", 1, "play" ]`)
+	stop := []byte(` {"command": ["observe_property", 1, "stop" ]`)
+	// seek := []byte(`{"command": ["observe_property", 2, "playback-time"], "request_id": 69}`)
+	subscribes := [][]byte{pause, play, stop}
+
+	for _, v := range subscribes {
+		conn.Write(append(v, byte('\n')))
+	}
+
 	go v.transmit(conn)
 	go v.receive(conn)
 	return nil
@@ -81,18 +92,15 @@ func (v *mpv) connect() error {
 
 func (v *mpv) transmit(conn net.Conn) {
 	for m := range v.ToPlayer {
-		mpvStr, err := m.ExecutePlayer(v)
+		mpvBits, err := m.ToPlayer(utils.TargetMpv)
 		if err != nil {
 			utils.ErrorLogger.Printf("parsing command to player format. cmd: %#v err: %s", m, err)
 			break
 		}
 
-		utils.DebugLogger.Printf("sending cmd to player. cmd: %s", mpvStr)
-
-		_, err = conn.Write(append(mpvStr, byte('\n')))
+		_, err = conn.Write(append(mpvBits, byte('\n')))
 		if err != nil {
 			utils.ErrorLogger.Printf("sending command to player socket. cmd: %#v err: %s", m, err)
-			break
 		}
 	}
 }
@@ -111,8 +119,4 @@ func (v *mpv) receive(conn net.Conn) {
 		}
 		utils.NoticeLogger.Printf("mpv response: %s\n", response)
 	}
-}
-
-func (v *mpv) GetPlayerType() utils.LocalTarget {
-	return v.PlayerType
 }

@@ -5,7 +5,6 @@ import (
 	"encoding/binary"
 	"strings"
 
-	"github.com/nathan-hello/nat-sync/src/client/players"
 	"github.com/nathan-hello/nat-sync/src/utils"
 )
 
@@ -27,12 +26,10 @@ type Ack struct {
 	Message string
 }
 
-func (c *Ack) ExecuteClient(_ players.Player) ([]byte, error) {
+func (c *Ack) Execute(loc int, executor interface{}) ([]byte, error) {
 	utils.DebugLogger.Printf("received ack: %#v\n", c)
 	return nil, nil
 }
-func (c *Ack) ExecuteServer() ([]byte, error) { return nil, nil }
-func (c *Ack) IsEchoed() bool                 { return false }
 
 func (a *Ack) ToBits() ([]byte, error) {
 	bits := new(bytes.Buffer)
@@ -44,7 +41,19 @@ func (a *Ack) ToBits() ([]byte, error) {
 
 }
 
-func (c *Ack) NewFromBits(bits []byte) error {
+func (c *Ack) New(t any) error {
+	switch s := t.(type) {
+	case []byte:
+		return c.newFromBits(s)
+	case []string:
+		return c.newFromString(s)
+
+	default:
+		return utils.ErrBadType
+	}
+}
+
+func (c *Ack) newFromBits(bits []byte) error {
 	buf := bytes.NewReader(bits)
 
 	// Read the fixed-length part of the Command struct
@@ -67,7 +76,7 @@ func (c *Ack) NewFromBits(bits []byte) error {
 	return nil
 }
 
-func (c *Ack) NewFromString(s []string) error {
+func (c *Ack) newFromString(s []string) error {
 	for _, v := range s {
 		v = strings.ToLower(v)
 		v = strings.TrimPrefix(v, "-")

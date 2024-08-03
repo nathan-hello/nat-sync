@@ -14,7 +14,7 @@ import (
 // Otherwise, this interface isn't being used for
 // any special composability. Just the lack of import.
 type PlayerExecutor interface {
-	ExecutePlayer(Player) ([]byte, error)
+	ToPlayer(p utils.LocalTarget) ([]byte, error)
 }
 
 type Player interface {
@@ -25,7 +25,6 @@ type Player interface {
 	Quit()
 	Launch() error
 	AppendQueue(PlayerExecutor)
-	GetPlayerType() utils.LocalTarget
 }
 
 func New(p utils.LocalTarget) Player {

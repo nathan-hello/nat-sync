@@ -7,7 +7,6 @@ import (
 	"sync"
 
 	"github.com/nathan-hello/nat-sync/src/messages"
-	"github.com/nathan-hello/nat-sync/src/messages/commands"
 	"github.com/nathan-hello/nat-sync/src/utils"
 )
 
@@ -76,21 +75,21 @@ func transmit(msgChan chan messages.Message, man *Manager) {
 	for v := range msgChan {
 		var response []byte
 		var err error
-		switch msg := v.(type) {
-		case *commands.Command:
-			response, err = msg.Sub.ExecuteServer()
+		switch msg := v.Sub.(type) {
+		case messages.ServerCommand:
+			response, err = msg.Execute()
 			if err != nil {
 				utils.ErrorLogger.Printf("running cmd on server failed. cmd: %#v\n err:%s", msg, err)
 			}
-			if msg.Sub.IsEchoed() {
-				response, err = msg.ToBits()
-				if err != nil {
-					utils.ErrorLogger.Printf("encoding command. cmd: %#v\n err:%s", msg, err)
-				}
+			utils.DebugLogger.Printf("server executed sub %#v\nresponse: %s\n", msg, response)
+		case messages.PlayerCommand:
+			response, err = v.ToBits()
+			if err != nil {
+				utils.ErrorLogger.Printf("encoding command. cmd: %#v\n err:%s", msg, err)
 			}
 
 			if len(response) > 0 {
-				utils.DebugLogger.Printf("Sending bits: %b\n", response)
+				// utils.DebugLogger.Printf("Sending bits: %b\n", response)
 				man.BroadcastMessage(response)
 			}
 		default:

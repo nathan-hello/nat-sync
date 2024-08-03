@@ -6,7 +6,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/nathan-hello/nat-sync/src/client/players"
 	"github.com/nathan-hello/nat-sync/src/utils"
 )
 
@@ -14,15 +13,26 @@ type Join struct {
 	RoomId uint16
 }
 
-func (c *Join) ExecuteClient(p players.Player) ([]byte, error) {
+func (c *Join) ToBits() ([]byte, error) {
+	bits := make([]byte, 2)
+	binary.BigEndian.PutUint16(bits, c.RoomId)
 
-	return nil, nil
+	return bits, nil
 }
-func (c *Join) ExecuteServer() ([]byte, error) { return nil, nil }
 
-func (c *Join) IsEchoed() bool { return false }
+func (c *Join) New(t any) error {
+	switch s := t.(type) {
+	case []byte:
+		return c.newFromBits(s)
+	case []string:
+		return c.newFromString(s)
 
-func (c *Join) NewFromBits(bits []byte) error {
+	default:
+		return utils.ErrBadType
+	}
+}
+
+func (c *Join) newFromBits(bits []byte) error {
 	buf := bytes.NewReader(bits)
 
 	if err := binary.Read(buf, binary.BigEndian, &c.RoomId); err != nil {
@@ -34,7 +44,7 @@ func (c *Join) NewFromBits(bits []byte) error {
 
 // Example:
 // ["RoomId=34129"]
-func (c *Join) NewFromString(s []string) error {
+func (c *Join) newFromString(s []string) error {
 	for _, v := range s {
 		v = strings.ToLower(v)
 		v = strings.TrimPrefix(v, "-")
@@ -57,11 +67,4 @@ func (c *Join) NewFromString(s []string) error {
 	}
 
 	return nil
-}
-
-func (c *Join) ToBits() ([]byte, error) {
-	bits := make([]byte, 2)
-	binary.BigEndian.PutUint16(bits, c.RoomId)
-
-	return bits, nil
 }

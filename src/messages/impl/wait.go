@@ -7,26 +7,17 @@ import (
 	"strings"
 	"time"
 
-	"github.com/nathan-hello/nat-sync/src/client/players"
 	"github.com/nathan-hello/nat-sync/src/utils"
 )
 
-// uint16 to prevent binary reader
-// from interpreting 1010 (decimal 10) as \n
 type Wait struct {
 	Secs uint8
 }
 
-func (c *Wait) ExecuteClient(p players.Player) ([]byte, error) {
-	return nil, nil
-}
-
-func (c *Wait) ExecuteServer() ([]byte, error) {
+func (c *Wait) Execute() ([]byte, error) {
 	time.Sleep(time.Duration(c.Secs) * time.Second)
-	return nil, nil
+	return []byte("success"), nil
 }
-
-func (c *Wait) IsEchoed() bool { return false }
 
 func (c *Wait) ToBits() ([]byte, error) {
 	buf := new(bytes.Buffer)
@@ -39,7 +30,18 @@ func (c *Wait) ToBits() ([]byte, error) {
 
 }
 
-func (c *Wait) NewFromBits(bits []byte) error {
+func (c *Wait) New(t any) error {
+	switch s := t.(type) {
+	case []byte:
+		return c.newFromBits(s)
+	case []string:
+		return c.newFromString(s)
+	default:
+		return utils.ErrBadType
+	}
+}
+
+func (c *Wait) newFromBits(bits []byte) error {
 	buf := bytes.NewReader(bits)
 
 	if err := binary.Read(buf, binary.BigEndian, &c.Secs); err != nil {
@@ -52,7 +54,7 @@ func (c *Wait) NewFromBits(bits []byte) error {
 // Example:
 // ["Secs=15"]
 // ["Uri=\"file:/home/catlover/kitty.jpeg\"", "--IsLocal=true"]
-func (c *Wait) NewFromString(s []string) error {
+func (c *Wait) newFromString(s []string) error {
 
 	init := false
 	for _, v := range s {

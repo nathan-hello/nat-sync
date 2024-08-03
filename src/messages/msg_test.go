@@ -1,17 +1,17 @@
-package commands
+package messages
 
 import (
 	"reflect"
 	"slices"
 	"testing"
 
-	"github.com/nathan-hello/nat-sync/src/messages/commands/impl"
+	"github.com/nathan-hello/nat-sync/src/messages/impl"
 	"github.com/nathan-hello/nat-sync/src/utils"
 )
 
 func TestCmdStrings(t *testing.T) {
 	utils.InitLogger()
-	happy := map[string]SubCommand{
+	happy := map[string]Command{
 		"change --uri=asdf.com/cats --action=append --hours=23 --mins=51 --secs=12": &impl.Change{Uri: "asdf.com/cats", UriLength: 13, Action: impl.ChgAppend, Timestamp: impl.Seek{Hours: 23, Mins: 51, Secs: 12}},
 		"join   --roomid=34129":                              &impl.Join{RoomId: uint16(34129)},
 		"kick   --userid=2182 --isself=false --hidemsg=true": &impl.Kick{UserId: 2182, IsSelf: false, HideMsg: true},
@@ -26,8 +26,10 @@ func TestCmdStrings(t *testing.T) {
 		if err != nil {
 			t.Fatalf("\nNewCmdFromString error: %s\nstring: %s", err, k)
 		}
-		if !reflect.DeepEqual(cmd.Sub, v) {
-			t.Fatalf("\nsubcommand from NewCmdFromString() does not match test case. \nstring: %s\nresult: %#v\nexpect: %#v", k, cmd.Sub, v)
+		for _, c := range cmd {
+			if !reflect.DeepEqual(c.Sub, v) {
+				t.Fatalf("\nsubcommand from NewCmdFromString() does not match test case. \nstring: %s\nresult: %#v\nexpect: %#v", k, c.Sub, v)
+			}
 		}
 		t.Log("string good   : ", k)
 	}
@@ -36,7 +38,7 @@ func TestCmdStrings(t *testing.T) {
 
 func TestBits(t *testing.T) {
 	utils.InitLogger()
-	empties := []SubCommand{
+	empties := []Command{
 		&impl.Change{},
 		&impl.Join{},
 		&impl.Kick{},
@@ -45,7 +47,7 @@ func TestBits(t *testing.T) {
 		&impl.Seek{},
 	}
 
-	subs := []SubCommand{
+	subs := []Command{
 		&impl.Change{Uri: "asdf.com/cats", UriLength: 13, Action: impl.ChgAppend, Timestamp: impl.Seek{Hours: 23, Mins: 51, Secs: 12}},
 		&impl.Join{RoomId: uint16(34129)},
 		&impl.Kick{UserId: 2182, IsSelf: false, HideMsg: true},
@@ -61,7 +63,7 @@ func TestBits(t *testing.T) {
 			t.Fatalf("err in subs index %d\nerr: %s", i, err)
 		}
 		// t.Logf("sub: %#v\ntobits:%#v\n", v, b)
-		err = empties[i].NewFromBits(b)
+		err = empties[i].New(b)
 		if err != nil {
 			t.Fatalf("err in frombits(): %#v\n", err)
 		}
@@ -80,18 +82,22 @@ func assert(test bool, t *testing.T, msg string) {
 
 func TestEncodeCmd(t *testing.T) {
 	utils.InitLogger()
-	subs := map[cmdHead]SubCommand{
-		Head.Change: &impl.Change{Uri: "asdf.com/cats", UriLength: 13, Action: impl.ChgAppend, Timestamp: impl.Seek{Hours: 23, Mins: 51, Secs: 12}},
-		Head.Join:   &impl.Join{RoomId: uint16(34129)},
-		Head.Kick:   &impl.Kick{UserId: 2182, IsSelf: false, HideMsg: true},
-		Head.Pause:  &impl.Pause{},
-		Head.Play:   &impl.Play{},
-		Head.Seek:   &impl.Seek{Hours: 10},
+	subs := map[string]Command{
+		"change": &impl.Change{Uri: "asdf.com/cats", UriLength: 13, Action: impl.ChgAppend, Timestamp: impl.Seek{Hours: 23, Mins: 51, Secs: 12}},
+		"join":   &impl.Join{RoomId: uint16(34129)},
+		"kick":   &impl.Kick{UserId: 2182, IsSelf: false, HideMsg: true},
+		"pause":  &impl.Pause{},
+		"play":   &impl.Play{},
+		"seek":   &impl.Seek{Hours: 10},
 	}
 
 	for k, v := range subs {
-		cmd := Command{
-			Head:    k,
+		head, err := getHeadFromString(k)
+		if err != nil {
+			t.Fatal(err)
+		}
+		cmd := Message{
+			Head:    head,
 			Version: utils.CurrentVersion,
 			UserId:  8231,
 		}
@@ -114,12 +120,15 @@ func TestEncodeCmd(t *testing.T) {
 		}
 
 		t.Logf("\n\ncmd: %#v\nnewCmd: %#v\n", cmd, newCmd)
-		t.Logf("\n\ncmdSub: %#v\nnewCmd.Sub: %#v\n", cmd.Sub, newCmd.Sub)
-		assert(newCmd.Head == cmd.Head, t, "head no match")
-		assert(newCmd.Version == cmd.Version, t, "version no match")
-		assert(newCmd.UserId == cmd.UserId, t, "userid no match")
-		assert(slices.Equal(newCmd.Content, cmd.Content), t, "content no match")
-		assert(reflect.DeepEqual(newCmd.Sub, cmd.Sub), t, "sub struct no match")
+		t.Logf("\n\ncmdSub: %#v\nnewCmd.Sub: %#v\n", cmd.Sub, newCmd[0].Sub)
+
+		for _, v := range newCmd {
+			assert(v.Head == cmd.Head, t, "head no match")
+			assert(v.Version == cmd.Version, t, "version no match")
+			assert(v.UserId == cmd.UserId, t, "userid no match")
+			assert(slices.Equal(v.Content, cmd.Content), t, "content no match")
+			assert(reflect.DeepEqual(v.Sub, cmd.Sub), t, "sub struct no match")
+		}
 
 	}
 

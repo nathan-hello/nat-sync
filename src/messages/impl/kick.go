@@ -6,7 +6,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/nathan-hello/nat-sync/src/client/players"
 	"github.com/nathan-hello/nat-sync/src/utils"
 )
 
@@ -16,14 +15,19 @@ type Kick struct {
 	HideMsg bool
 }
 
-func (c *Kick) ExecuteClient(p players.Player) ([]byte, error) {
+func (c *Kick) New(t any) error {
+	switch s := t.(type) {
+	case []byte:
+		return c.newFromBits(s)
+	case []string:
+		return c.newFromString(s)
 
-	return nil, nil
+	default:
+		return utils.ErrBadType
+	}
 }
-func (c *Kick) ExecuteServer() ([]byte, error) { return nil, nil }
-func (c *Kick) IsEchoed() bool                 { return false }
 
-func (c *Kick) NewFromBits(bits []byte) error {
+func (c *Kick) newFromBits(bits []byte) error {
 	buf := bytes.NewReader(bits)
 
 	if err := binary.Read(buf, binary.BigEndian, &c.UserId); err != nil {
@@ -43,7 +47,7 @@ func (c *Kick) NewFromBits(bits []byte) error {
 
 // Example:
 // ["UserId=2182", "IsSelf=true", "--HideMsg=false"]
-func (c *Kick) NewFromString(s []string) error {
+func (c *Kick) newFromString(s []string) error {
 	for _, v := range s {
 		v = strings.ToLower(v)
 		v = strings.TrimPrefix(v, "-")
