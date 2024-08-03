@@ -2,11 +2,14 @@ package server
 
 import (
 	"bufio"
+	"context"
 	"io"
 	"net"
 	"sync"
 
+	"github.com/nathan-hello/nat-sync/src/db"
 	"github.com/nathan-hello/nat-sync/src/messages"
+	"github.com/nathan-hello/nat-sync/src/messages/impl"
 	"github.com/nathan-hello/nat-sync/src/utils"
 )
 
@@ -40,16 +43,11 @@ func listen(listener net.Listener, man *Manager) {
 			utils.ErrorLogger.Println("accepting connection:", err)
 			continue
 		}
-
-		man.AddClient(Client{
-			Id:   1000,
-			Name: "asdf",
-			Conn: conn,
-			Room: 1,
-		})
-
 		go receive(conn, msgChan)
-		go transmit(msgChan, man)
+		go handle(conn, msgChan, man)
+		whoMsg, _ := messages.New("who name=server isresponse=false")
+		msgChan <- whoMsg[0]
+
 	}
 }
 
@@ -71,7 +69,8 @@ func receive(conn net.Conn, msgChan chan messages.Message) {
 	}
 }
 
-func transmit(msgChan chan messages.Message, man *Manager) {
+func handle(conn net.Conn, msgChan chan messages.Message, man *Manager) {
+	d := db.Db()
 	for v := range msgChan {
 		var response []byte
 		var err error
@@ -91,6 +90,29 @@ func transmit(msgChan chan messages.Message, man *Manager) {
 			if len(response) > 0 {
 				// utils.DebugLogger.Printf("Sending bits: %b\n", response)
 				man.BroadcastMessage(response)
+			}
+		case messages.AdminCommand:
+			switch admin := msg.(type) {
+			case *impl.Connect:
+				user, err := d.InsertUser(context.Background(), db.InsertUserParams{Username: admin.Name})
+				if err != nil {
+					utils.ErrorLogger.Printf("db insert user: %s", err)
+					ack, _ := messages.New(impl.Ack{Code: impl.AckCode.InternalServiceError, Message: "server had a database error"})
+					ackBits, _ := ack[0].ToBits()
+					conn.Write(ackBits)
+					continue
+				}
+
+				man.AddClient(Client{
+					Id:     user.ID,
+					Name:   user.Username,
+					Conn:   conn,
+					RoomId: admin.RoomId,
+				})
+
+				ack, _ := messages.New(impl.Ack{Code: impl.AckCode.Ok, Message: "connection accepted"})
+				ackBits, _ := ack[0].ToBits()
+				conn.Write(ackBits)
 			}
 		default:
 			utils.ErrorLogger.Printf("server got a non-command message: %#v\n", msg)

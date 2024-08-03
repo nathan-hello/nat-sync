@@ -5,11 +5,11 @@
 package db
 
 type Room struct {
-	ID   string
-	Name string
+	ID   int64
+	Name interface{}
 }
 
 type User struct {
-	ID       string
+	ID       int64
 	Username string
 }

@@ -16,7 +16,7 @@ DELETE FROM rooms WHERE id = ?
 // DeleteRoom
 //
 //	DELETE FROM rooms WHERE id = ?
-func (q *Queries) DeleteRoom(ctx context.Context, id string) error {
+func (q *Queries) DeleteRoom(ctx context.Context, id int64) error {
 	_, err := q.db.ExecContext(ctx, deleteRoom, id)
 	return err
 }
@@ -28,7 +28,7 @@ DELETE FROM users WHERE id = ?
 // DeleteUser
 //
 //	DELETE FROM users WHERE id = ?
-func (q *Queries) DeleteUser(ctx context.Context, id string) error {
+func (q *Queries) DeleteUser(ctx context.Context, id int64) error {
 	_, err := q.db.ExecContext(ctx, deleteUser, id)
 	return err
 }
@@ -38,8 +38,8 @@ INSERT INTO rooms (id, name) VALUES (?, ?)
 `
 
 type InsertRoomParams struct {
-	ID   string
-	Name string
+	ID   int64
+	Name interface{}
 }
 
 // table: rooms
@@ -50,21 +50,23 @@ func (q *Queries) InsertRoom(ctx context.Context, arg InsertRoomParams) error {
 	return err
 }
 
-const insertUser = `-- name: InsertUser :exec
-INSERT INTO users (id, username) VALUES (?, ?)
+const insertUser = `-- name: InsertUser :one
+INSERT INTO users (id, username) VALUES (?, ?) RETURNING id, username
 `
 
 type InsertUserParams struct {
-	ID       string
+	ID       int64
 	Username string
 }
 
 // table: users
 //
-//	INSERT INTO users (id, username) VALUES (?, ?)
-func (q *Queries) InsertUser(ctx context.Context, arg InsertUserParams) error {
-	_, err := q.db.ExecContext(ctx, insertUser, arg.ID, arg.Username)
-	return err
+//	INSERT INTO users (id, username) VALUES (?, ?) RETURNING id, username
+func (q *Queries) InsertUser(ctx context.Context, arg InsertUserParams) (User, error) {
+	row := q.db.QueryRowContext(ctx, insertUser, arg.ID, arg.Username)
+	var i User
+	err := row.Scan(&i.ID, &i.Username)
+	return i, err
 }
 
 const selectRoomById = `-- name: SelectRoomById :one
@@ -74,7 +76,7 @@ SELECT id, name FROM rooms WHERE id = ?
 // SelectRoomById
 //
 //	SELECT id, name FROM rooms WHERE id = ?
-func (q *Queries) SelectRoomById(ctx context.Context, id string) (Room, error) {
+func (q *Queries) SelectRoomById(ctx context.Context, id int64) (Room, error) {
 	row := q.db.QueryRowContext(ctx, selectRoomById, id)
 	var i Room
 	err := row.Scan(&i.ID, &i.Name)
@@ -88,7 +90,7 @@ SELECT id, name FROM rooms WHERE name = ?
 // SelectRoomByName
 //
 //	SELECT id, name FROM rooms WHERE name = ?
-func (q *Queries) SelectRoomByName(ctx context.Context, name string) (Room, error) {
+func (q *Queries) SelectRoomByName(ctx context.Context, name interface{}) (Room, error) {
 	row := q.db.QueryRowContext(ctx, selectRoomByName, name)
 	var i Room
 	err := row.Scan(&i.ID, &i.Name)
@@ -102,7 +104,7 @@ SELECT id, username FROM users WHERE id = ?
 // SelectUserById
 //
 //	SELECT id, username FROM users WHERE id = ?
-func (q *Queries) SelectUserById(ctx context.Context, id string) (User, error) {
+func (q *Queries) SelectUserById(ctx context.Context, id int64) (User, error) {
 	row := q.db.QueryRowContext(ctx, selectUserById, id)
 	var i User
 	err := row.Scan(&i.ID, &i.Username)
@@ -128,8 +130,8 @@ UPDATE rooms SET name = ? WHERE id = ?
 `
 
 type UpdateRoomNameByIdParams struct {
-	Name string
-	ID   string
+	Name interface{}
+	ID   int64
 }
 
 // UpdateRoomNameById
@@ -146,7 +148,7 @@ UPDATE users SET username = ? WHERE id = ?
 
 type UpdateUserNameByIdParams struct {
 	Username string
-	ID       string
+	ID       int64
 }
 
 // UpdateUserNameById

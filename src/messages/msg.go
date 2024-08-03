@@ -15,7 +15,6 @@ type Message struct {
 	Length  uint16
 	Head    uint16
 	Version uint16
-	UserId  uint16
 	Content []byte
 	Sub     Command
 }
@@ -23,6 +22,7 @@ type Message struct {
 type Command interface {
 	New(any) error
 	ToBits() ([]byte, error)
+	GetHead() string
 }
 
 type PlayerCommand interface {
@@ -48,7 +48,7 @@ type RegisteredHead struct {
 	Impl Command
 }
 
-var registeredHeads = []RegisteredHead{
+var RegisteredHeads = []RegisteredHead{
 	{1, "change", &impl.Change{}},
 	{2, "pause", &impl.Pause{}},
 	{3, "play", &impl.Play{}},
@@ -61,9 +61,9 @@ var registeredHeads = []RegisteredHead{
 	{200, "wait", &impl.Wait{}},
 }
 
-func New[T string | []byte](i T) ([]Message, error) {
+func New(i any) ([]Message, error) {
 	msgs := []Message{}
-	switch t := any(i).(type) {
+	switch t := i.(type) {
 	case []byte:
 		m, err := newMsgFromBits(t)
 		if err != nil {
@@ -87,6 +87,18 @@ func New[T string | []byte](i T) ([]Message, error) {
 			}
 		}
 		return msgs, nil
+	case Command:
+		h, _ := getHeadFromString(t.GetHead())
+		subBits, _ := t.ToBits()
+		m := Message{
+			Head:    h,
+			Version: utils.CurrentVersion,
+			Sub:     t,
+			Content: subBits,
+		}
+
+		return append(msgs, m), nil
+
 	}
 	return nil, utils.ErrImpossible
 }
@@ -105,9 +117,6 @@ func (cmd *Message) ToBits() ([]byte, error) {
 		return nil, err
 	}
 	if err := binary.Write(bits, binary.BigEndian, cmd.Version); err != nil {
-		return nil, err
-	}
-	if err := binary.Write(bits, binary.BigEndian, cmd.UserId); err != nil {
 		return nil, err
 	}
 
@@ -146,10 +155,6 @@ func newMsgFromBits(bits []byte) (*Message, error) {
 	}
 	if err := binary.Read(buf, binary.BigEndian, &msg.Version); err != nil {
 		utils.DebugLogger.Println("binary.Read failed (Version):", err)
-		return nil, err
-	}
-	if err := binary.Read(buf, binary.BigEndian, &msg.UserId); err != nil {
-		utils.DebugLogger.Println("binary.Read failed (Creator):", err)
 		return nil, err
 	}
 
@@ -212,7 +217,7 @@ func newMsgFromString(s string) (*Message, error) {
 
 // Register new commands here
 func getSubFromHead(head uint16) (Command, error) {
-	for _, v := range registeredHeads {
+	for _, v := range RegisteredHeads {
 		if v.Code == head {
 			return v.Impl, nil
 		}
@@ -222,7 +227,7 @@ func getSubFromHead(head uint16) (Command, error) {
 
 // Register new strings here
 func getHeadFromString(s string) (uint16, error) {
-	for _, v := range registeredHeads {
+	for _, v := range RegisteredHeads {
 		if v.Name == s {
 			return v.Code, nil
 		}

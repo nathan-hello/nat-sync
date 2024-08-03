@@ -14,6 +14,8 @@ type Wait struct {
 	Secs uint8
 }
 
+func (c *Wait) GetHead() string { return "wait" }
+
 func (c *Wait) Execute() ([]byte, error) {
 	time.Sleep(time.Duration(c.Secs) * time.Second)
 	return []byte("success"), nil

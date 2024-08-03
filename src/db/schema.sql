@@ -1,11 +1,11 @@
 CREATE TABLE rooms (
-        id TEXT PRIMARY KEY NOT NULL,
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT UNIQUE NOT NULL
         password TEXT NOT NULL
 )
 
 CREATE TABLE users (
-        id TEXT PRIMARY KEY NOT NULL,
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT UNIQUE NOT NULL
 )
 

@@ -10,6 +10,7 @@ var (
 	ErrInvalidCmd    = errors.New("command given to server is not valid")
 	ErrNoContent     = errors.New("command given has no content")
 	ErrUsernameBlank = errors.New("username string in command was blank")
+	ErrUsernameLong  = errors.New("username is too long. must be <255 characters")
 )
 
 var (

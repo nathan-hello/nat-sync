@@ -54,12 +54,12 @@ func receive(conn net.Conn, p *ClientParams) {
 
 		utils.DebugLogger.Printf("got msg %#v\n\n", msgs)
 		for _, v := range msgs {
-			if cmd, ok := v.Sub.(messages.PlayerCommand); ok {
-
-				utils.DebugLogger.Printf("appending cmd to playerqueue. cmd: %#v\n", cmd)
-				p.Player.AppendQueue(cmd)
-			} else if !ok {
-				utils.DebugLogger.Printf("not a player command! %#v\n", cmd)
+			switch msg := v.Sub.(type) {
+			case messages.PlayerCommand:
+				utils.DebugLogger.Printf("appending cmd to playerqueue. cmd: %#v\n", msg)
+				p.Player.AppendQueue(msg)
+			default:
+				utils.ErrorLogger.Printf("client was given a command that was not a player command! %#v\n", msg)
 			}
 		}
 	}
@@ -97,17 +97,20 @@ func transmit(conn net.Conn, p *ClientParams) {
 			}
 			msgsToSend = msgs
 		}
+		sendMsgs(conn, msgsToSend)
 
-		for _, m := range msgsToSend {
-			bits, err := m.ToBits()
-			if err != nil {
-				utils.ErrorLogger.Println("cmd.ToBits() in client transmit. err: ", err)
-				continue
-			}
-			_, err = conn.Write(bits)
-			if err != nil {
-				utils.ErrorLogger.Printf("client writing bits failed. bits: %b\n", bits)
-			}
+	}
+}
+func sendMsgs(conn net.Conn, msgs []messages.Message) {
+	for _, m := range msgs {
+		bits, err := m.ToBits()
+		if err != nil {
+			utils.ErrorLogger.Println("cmd.ToBits() in client transmit. err: ", err)
+			continue
+		}
+		_, err = conn.Write(bits)
+		if err != nil {
+			utils.ErrorLogger.Printf("client writing bits failed. bits: %b\n", bits)
 		}
 	}
 }

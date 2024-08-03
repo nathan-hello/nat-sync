@@ -12,6 +12,7 @@ type Quit struct {
 	QuitFunc Quitter
 }
 
+func (c *Quit) GetHead() string { return "quit" }
 func (c *Quit) ToPlayer(p utils.LocalTarget) ([]byte, error) {
 	return []byte(`{"command":["quit", 0]}`), nil
 

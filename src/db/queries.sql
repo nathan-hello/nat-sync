@@ -11,8 +11,8 @@ SELECT id, name FROM rooms WHERE name = ?;
 UPDATE rooms SET name = ? WHERE id = ?;
 
 -- table: users
--- name: InsertUser :exec
-INSERT INTO users (id, username) VALUES (?, ?);
+-- name: InsertUser :one
+INSERT INTO users (id, username) VALUES (?, ?) RETURNING id, username;
 -- name: DeleteUser :exec
 DELETE FROM users WHERE id = ?;
 -- name: SelectUserById :one

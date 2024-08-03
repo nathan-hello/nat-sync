@@ -24,6 +24,7 @@ type Change struct {
 	Uri       string
 }
 
+func (c *Change) GetHead() string { return "change" }
 func (c *Change) ToPlayer(p utils.LocalTarget) ([]byte, error) {
 	m := MpvJson{Command: []string{"loadfile", c.Uri}}
 

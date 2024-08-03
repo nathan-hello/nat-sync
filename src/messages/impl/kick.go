@@ -15,6 +15,8 @@ type Kick struct {
 	HideMsg bool
 }
 
+func (c *Kick) GetHead() string { return "kick" }
+
 func (c *Kick) New(t any) error {
 	switch s := t.(type) {
 	case []byte:

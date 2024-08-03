@@ -10,14 +10,23 @@ import (
 )
 
 type Join struct {
-	RoomId uint16
+	UserId uint16
+	RoomId int64
 }
 
-func (c *Join) ToBits() ([]byte, error) {
-	bits := make([]byte, 2)
-	binary.BigEndian.PutUint16(bits, c.RoomId)
+func (c *Join) GetHead() string { return "join" }
 
-	return bits, nil
+func (c *Join) ToBits() ([]byte, error) {
+	var bits = new(bytes.Buffer)
+
+	if err := binary.Write(bits, binary.BigEndian, c.UserId); err != nil {
+		return nil, err
+	}
+	if err := binary.Write(bits, binary.BigEndian, c.RoomId); err != nil {
+		return nil, err
+	}
+
+	return bits.Bytes(), nil
 }
 
 func (c *Join) New(t any) error {
@@ -34,6 +43,10 @@ func (c *Join) New(t any) error {
 
 func (c *Join) newFromBits(bits []byte) error {
 	buf := bytes.NewReader(bits)
+
+	if err := binary.Read(buf, binary.BigEndian, &c.UserId); err != nil {
+		return err
+	}
 
 	if err := binary.Read(buf, binary.BigEndian, &c.RoomId); err != nil {
 		return err
@@ -58,7 +71,7 @@ func (c *Join) newFromString(s []string) error {
 			if err != nil {
 				return utils.ErrBadArgs(s)
 			}
-			c.RoomId = uint16(i)
+			c.RoomId = int64(i)
 		}
 	}
 

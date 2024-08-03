@@ -9,6 +9,7 @@ import (
 
 	"github.com/nathan-hello/nat-sync/src/client"
 	"github.com/nathan-hello/nat-sync/src/client/players"
+	"github.com/nathan-hello/nat-sync/src/db"
 	"github.com/nathan-hello/nat-sync/src/server"
 	"github.com/nathan-hello/nat-sync/src/utils"
 )
@@ -23,6 +24,11 @@ var (
 
 func main() {
 	_, err := utils.ParseArgs()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = db.DbInit()
 	if err != nil {
 		log.Fatal(err)
 	}

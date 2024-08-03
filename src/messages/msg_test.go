@@ -13,7 +13,7 @@ func TestCmdStrings(t *testing.T) {
 	utils.InitLogger()
 	happy := map[string]Command{
 		"change --uri=asdf.com/cats --action=append --hours=23 --mins=51 --secs=12": &impl.Change{Uri: "asdf.com/cats", UriLength: 13, Action: impl.ChgAppend, Timestamp: impl.Seek{Hours: 23, Mins: 51, Secs: 12}},
-		"join   --roomid=34129":                              &impl.Join{RoomId: uint16(34129)},
+		"join   --roomid=34129":                              &impl.Join{RoomId: int64(34129)},
 		"kick   --userid=2182 --isself=false --hidemsg=true": &impl.Kick{UserId: 2182, IsSelf: false, HideMsg: true},
 		"pause  ":                                &impl.Pause{},
 		"play   ":                                &impl.Play{},
@@ -49,7 +49,7 @@ func TestBits(t *testing.T) {
 
 	subs := []Command{
 		&impl.Change{Uri: "asdf.com/cats", UriLength: 13, Action: impl.ChgAppend, Timestamp: impl.Seek{Hours: 23, Mins: 51, Secs: 12}},
-		&impl.Join{RoomId: uint16(34129)},
+		&impl.Join{RoomId: int64(34129)},
 		&impl.Kick{UserId: 2182, IsSelf: false, HideMsg: true},
 		&impl.Pause{},
 		&impl.Play{},
@@ -84,7 +84,7 @@ func TestEncodeCmd(t *testing.T) {
 	utils.InitLogger()
 	subs := map[string]Command{
 		"change": &impl.Change{Uri: "asdf.com/cats", UriLength: 13, Action: impl.ChgAppend, Timestamp: impl.Seek{Hours: 23, Mins: 51, Secs: 12}},
-		"join":   &impl.Join{RoomId: uint16(34129)},
+		"join":   &impl.Join{RoomId: int64(34129)},
 		"kick":   &impl.Kick{UserId: 2182, IsSelf: false, HideMsg: true},
 		"pause":  &impl.Pause{},
 		"play":   &impl.Play{},
@@ -99,7 +99,6 @@ func TestEncodeCmd(t *testing.T) {
 		cmd := Message{
 			Head:    head,
 			Version: utils.CurrentVersion,
-			UserId:  8231,
 		}
 		bits, err := v.ToBits()
 		if err != nil {
@@ -125,7 +124,6 @@ func TestEncodeCmd(t *testing.T) {
 		for _, v := range newCmd {
 			assert(v.Head == cmd.Head, t, "head no match")
 			assert(v.Version == cmd.Version, t, "version no match")
-			assert(v.UserId == cmd.UserId, t, "userid no match")
 			assert(slices.Equal(v.Content, cmd.Content), t, "content no match")
 			assert(reflect.DeepEqual(v.Sub, cmd.Sub), t, "sub struct no match")
 		}

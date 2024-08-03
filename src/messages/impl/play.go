@@ -10,6 +10,7 @@ type Play struct {
 	User string
 }
 
+func (c *Play) GetHead() string { return "play" }
 func (c *Play) ToPlayer(p utils.LocalTarget) ([]byte, error) {
 
 	pause := `{"command":["set_property","pause",false]}`

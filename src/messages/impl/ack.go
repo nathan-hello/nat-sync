@@ -8,12 +8,12 @@ import (
 	"github.com/nathan-hello/nat-sync/src/utils"
 )
 
-type ackHead uint16
+type AckHead uint16
 
 var AckCode = struct {
-	Ok                   ackHead
-	InternalServiceError ackHead
-	BadEcho              ackHead
+	Ok                   AckHead
+	InternalServiceError AckHead
+	BadEcho              AckHead
 }{
 	Ok:                   200,
 	InternalServiceError: 500,
@@ -21,10 +21,12 @@ var AckCode = struct {
 }
 
 type Ack struct {
-	Code    ackHead
+	Code    AckHead
 	MsgLen  uint32
 	Message string
 }
+
+func (c *Ack) GetHead() string { return "ack" }
 
 func (c *Ack) Execute(loc int, executor interface{}) ([]byte, error) {
 	utils.DebugLogger.Printf("received ack: %#v\n", c)
