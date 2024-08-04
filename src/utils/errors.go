@@ -11,6 +11,8 @@ var (
 	ErrNoContent     = errors.New("command given has no content")
 	ErrUsernameBlank = errors.New("username string in command was blank")
 	ErrUsernameLong  = errors.New("username is too long. must be <255 characters")
+	ErrNoRoomClient  = errors.New("room id was not specified. you must join a room first")
+	ErrNoRoomServer  = errors.New("room id was not specified. server tried sending a command to room 0")
 )
 
 var (
@@ -52,7 +54,7 @@ func ErrNotImplemented(s string) error {
 }
 
 func ErrBadString(s string, err error) error {
-	e := fmt.Errorf("string was not able to be turned into a message (did you try passing in an ack?). string: %s", s)
+	e := fmt.Errorf("string was not able to be turned into a message. string: %s", s)
 	return errors.Join(e, err)
 }
 

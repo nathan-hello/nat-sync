@@ -12,7 +12,7 @@ var db *Queries
 // db calls throughout the program. Also, it means we
 // don't have to handle an err on said subsequent db calls
 func DbInit() error {
-	var d, err = sql.Open("sqlite3", ":memory")
+	var d, err = sql.Open("sqlite3", "file:database.db")
 	if err != nil {
 		return err
 	}

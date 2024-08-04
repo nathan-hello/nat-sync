@@ -1,50 +1,69 @@
 package server
 
 import (
-	"net"
 	"sync"
+
+	"github.com/nathan-hello/nat-sync/src/utils"
 )
 
-type Room struct {
-	Id       uint8
-	Name     string
-	Password string
-}
-
-type Client struct {
-	Id     int64
-	Name   string
-	Conn   net.Conn
-	RoomId int64
-}
-
 type Manager struct {
-	Lock    sync.Mutex
-	Clients []Client
+	Lock  sync.Mutex
+	Rooms map[int64]utils.ServerRoom
 }
 
-func (m *Manager) BroadcastMessage(bits []byte) {
+func (m *Manager) BroadcastMessage(room int64, bits []byte) {
 	m.Lock.Lock()
 	defer m.Lock.Unlock()
 
-	for _, c := range m.Clients {
-		c.Conn.Write(bits)
+	currentRoom, ok := m.Rooms[room]
+	if !ok {
+		utils.ErrorLogger.Printf("tried to broadcast message to nonexistent room. room requested: %d, room map: %#v\n", room, m.Rooms)
+		return
 	}
-}
 
-func (m *Manager) AddClient(c Client) {
-	m.Lock.Lock()
-	defer m.Lock.Unlock()
-	m.Clients = append(m.Clients, c)
-}
-
-func (m *Manager) RemoveClient(room int64, userId int64) {
-	m.Lock.Lock()
-	defer m.Lock.Unlock()
-
-	for _, v := range m.Clients {
-		if v.Id == userId && v.RoomId == room {
-			v.Conn.Close()
+	for _, c := range currentRoom.Clients {
+		i, err := c.Conn.Write(bits)
+		if err != nil {
+			utils.ErrorLogger.Printf("conn.Write for client failed. err: %s, client: %#v\n", err, c)
 		}
+		utils.DebugLogger.Printf("conn.Write wrote %d bytes for client: %#v\n", i, c)
+
 	}
+}
+
+func (m *Manager) AddClient(room int64, c utils.Client) {
+	m.Lock.Lock()
+	defer m.Lock.Unlock()
+	currentRoom, ok := m.Rooms[room]
+	if !ok {
+		utils.ErrorLogger.Printf("tried to add client to nonexistent room. room requested: %d, room map: %#v\n", room, m.Rooms)
+		return
+	}
+	_, ok = currentRoom.Clients[c.Id]
+	if ok {
+		utils.ErrorLogger.Printf("tried to add client but it is already in the room. room.Clients: %#v\n, client struct: %#v\n", currentRoom.Clients, m.Rooms)
+		return
+	}
+
+	currentRoom.Clients[c.Id] = c
+}
+
+func (m *Manager) RemoveClient(room int64, c utils.Client) {
+	m.Lock.Lock()
+	defer m.Lock.Unlock()
+	currentRoom, ok := m.Rooms[room]
+	if !ok {
+		utils.ErrorLogger.Printf("tried to delete client from nonexistent room. room requested: %d, room map: %#v\n", room, m.Rooms)
+		return
+	}
+
+	_, ok = currentRoom.Clients[c.Id]
+	if ok {
+		utils.ErrorLogger.Printf("tried to delete client but it is not in the room. room.Clients: %#v\n, client struct: %#v\n", currentRoom.Clients, m.Rooms)
+		return
+	}
+
+	c.Conn.Close()
+
+	delete(currentRoom.Clients, c.Id)
 }

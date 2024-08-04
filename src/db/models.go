@@ -5,8 +5,9 @@
 package db
 
 type Room struct {
-	ID   int64
-	Name interface{}
+	ID       int64
+	Name     string
+	Password string
 }
 
 type User struct {

@@ -35,7 +35,11 @@ func main() {
 
 	utils.InitLogger()
 
-	err = server.CreateServer(&server.ServerParams{ServerAddress: serverAddr})
+	serverRooms := map[int64]utils.ServerRoom{
+		1: {Id: 1, Name: "asdf", Password: "", Clients: make(map[int64]utils.Client)},
+	}
+
+	err = server.CreateServer(&server.ServerParams{ServerAddress: serverAddr, Rooms: serverRooms})
 	if err != nil {
 		utils.ErrorLogger.Fatalf("server could not be started. err: %s", err)
 	}

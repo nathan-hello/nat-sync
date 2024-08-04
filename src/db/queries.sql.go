@@ -34,36 +34,31 @@ func (q *Queries) DeleteUser(ctx context.Context, id int64) error {
 }
 
 const insertRoom = `-- name: InsertRoom :exec
-INSERT INTO rooms (id, name) VALUES (?, ?)
+INSERT INTO rooms (name, password) VALUES (?, ?)
 `
 
 type InsertRoomParams struct {
-	ID   int64
-	Name interface{}
+	Name     string
+	Password string
 }
 
 // table: rooms
 //
-//	INSERT INTO rooms (id, name) VALUES (?, ?)
+//	INSERT INTO rooms (name, password) VALUES (?, ?)
 func (q *Queries) InsertRoom(ctx context.Context, arg InsertRoomParams) error {
-	_, err := q.db.ExecContext(ctx, insertRoom, arg.ID, arg.Name)
+	_, err := q.db.ExecContext(ctx, insertRoom, arg.Name, arg.Password)
 	return err
 }
 
 const insertUser = `-- name: InsertUser :one
-INSERT INTO users (id, username) VALUES (?, ?) RETURNING id, username
+INSERT INTO users (username) VALUES (?) RETURNING id, username
 `
-
-type InsertUserParams struct {
-	ID       int64
-	Username string
-}
 
 // table: users
 //
-//	INSERT INTO users (id, username) VALUES (?, ?) RETURNING id, username
-func (q *Queries) InsertUser(ctx context.Context, arg InsertUserParams) (User, error) {
-	row := q.db.QueryRowContext(ctx, insertUser, arg.ID, arg.Username)
+//	INSERT INTO users (username) VALUES (?) RETURNING id, username
+func (q *Queries) InsertUser(ctx context.Context, username string) (User, error) {
+	row := q.db.QueryRowContext(ctx, insertUser, username)
 	var i User
 	err := row.Scan(&i.ID, &i.Username)
 	return i, err
@@ -73,12 +68,17 @@ const selectRoomById = `-- name: SelectRoomById :one
 SELECT id, name FROM rooms WHERE id = ?
 `
 
+type SelectRoomByIdRow struct {
+	ID   int64
+	Name string
+}
+
 // SelectRoomById
 //
 //	SELECT id, name FROM rooms WHERE id = ?
-func (q *Queries) SelectRoomById(ctx context.Context, id int64) (Room, error) {
+func (q *Queries) SelectRoomById(ctx context.Context, id int64) (SelectRoomByIdRow, error) {
 	row := q.db.QueryRowContext(ctx, selectRoomById, id)
-	var i Room
+	var i SelectRoomByIdRow
 	err := row.Scan(&i.ID, &i.Name)
 	return i, err
 }
@@ -87,13 +87,32 @@ const selectRoomByName = `-- name: SelectRoomByName :one
 SELECT id, name FROM rooms WHERE name = ?
 `
 
+type SelectRoomByNameRow struct {
+	ID   int64
+	Name string
+}
+
 // SelectRoomByName
 //
 //	SELECT id, name FROM rooms WHERE name = ?
-func (q *Queries) SelectRoomByName(ctx context.Context, name interface{}) (Room, error) {
+func (q *Queries) SelectRoomByName(ctx context.Context, name string) (SelectRoomByNameRow, error) {
 	row := q.db.QueryRowContext(ctx, selectRoomByName, name)
-	var i Room
+	var i SelectRoomByNameRow
 	err := row.Scan(&i.ID, &i.Name)
+	return i, err
+}
+
+const selectRoomByNameWithPassword = `-- name: SelectRoomByNameWithPassword :one
+SELECT id, name, password FROM rooms WHERE name = ?
+`
+
+// SelectRoomByNameWithPassword
+//
+//	SELECT id, name, password FROM rooms WHERE name = ?
+func (q *Queries) SelectRoomByNameWithPassword(ctx context.Context, name string) (Room, error) {
+	row := q.db.QueryRowContext(ctx, selectRoomByNameWithPassword, name)
+	var i Room
+	err := row.Scan(&i.ID, &i.Name, &i.Password)
 	return i, err
 }
 
@@ -130,7 +149,7 @@ UPDATE rooms SET name = ? WHERE id = ?
 `
 
 type UpdateRoomNameByIdParams struct {
-	Name interface{}
+	Name string
 	ID   int64
 }
 

@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 
 	"github.com/nathan-hello/nat-sync/src/messages/impl"
@@ -13,6 +14,7 @@ import (
 
 type Message struct {
 	Length  uint16
+	RoomId  int64
 	Head    uint16
 	Version uint16
 	Content []byte
@@ -39,7 +41,7 @@ type AdminCommand interface {
 type ServerCommand interface {
 	New(any) error
 	ToBits() ([]byte, error)
-	Execute() ([]byte, error)
+	Execute(executor interface{}) ([]byte, error)
 }
 
 type RegisteredHead struct {
@@ -61,7 +63,12 @@ var RegisteredHeads = []RegisteredHead{
 	{200, "wait", &impl.Wait{}},
 }
 
-func New(i any) ([]Message, error) {
+var HeadsWithoutRoom = []RegisteredHead{
+	{102, "join", &impl.Join{}},
+}
+
+func New(i any, roomId *int64) ([]Message, error) {
+
 	msgs := []Message{}
 	switch t := i.(type) {
 	case []byte:
@@ -75,23 +82,29 @@ func New(i any) ([]Message, error) {
 		utils.DebugLogger.Printf("string got: %s\n", t)
 		delmited := strings.Split(t, ";")
 		for _, s := range delmited {
-			msg, err := newMsgFromString(s)
+			m, err := newMsgFromString(s)
 			if err != nil {
 				return nil, utils.ErrBadString(t, err)
 			}
 
 			// if there is a final ; but no commands afterwards,
 			// msg will be nil because of the if len(parts) == 0 {return nil, nil}
-			if msg != nil {
-				msgs = append(msgs, *msg)
+			if m == nil {
+				continue
 			}
+			msgs = append(msgs, *m)
 		}
 		return msgs, nil
+
 	case Command:
+		// Placing a Command here assumes that there is a roomId passed
+		// to this function. There is no error returned because when I
+		// assume that it's done correctly.
 		h, _ := getHeadFromString(t.GetHead())
 		subBits, _ := t.ToBits()
 		m := Message{
 			Head:    h,
+			RoomId:  *roomId,
 			Version: utils.CurrentVersion,
 			Sub:     t,
 			Content: subBits,
@@ -111,6 +124,10 @@ func (cmd *Message) ToBits() ([]byte, error) {
 	}
 	if cmd.Version == 0 {
 		cmd.Version = utils.CurrentVersion
+	}
+
+	if err := binary.Write(bits, binary.BigEndian, cmd.RoomId); err != nil {
+		return nil, err
 	}
 
 	if err := binary.Write(bits, binary.BigEndian, cmd.Head); err != nil {
@@ -147,6 +164,10 @@ func newMsgFromBits(bits []byte) (*Message, error) {
 	var msg Message
 	if err := binary.Read(buf, binary.BigEndian, &msg.Length); err != nil {
 		utils.DebugLogger.Println("binary.Read failed (Length):", err)
+		return nil, err
+	}
+	if err := binary.Read(buf, binary.BigEndian, &msg.RoomId); err != nil {
+		utils.DebugLogger.Println("binary.Read failed (RoomId):", err)
 		return nil, err
 	}
 	if err := binary.Read(buf, binary.BigEndian, &msg.Head); err != nil {
@@ -191,6 +212,21 @@ func newMsgFromString(s string) (*Message, error) {
 		return nil, err
 	}
 
+	getRoom := true
+	for _, v := range HeadsWithoutRoom {
+		if v.Code == head {
+			getRoom = false
+		}
+	}
+
+	var roomId int64
+	if getRoom {
+		roomId, err = getRoomIdFromString(&parts)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	sub, err := getSubFromHead(head)
 	if err != nil {
 		return nil, err
@@ -208,6 +244,7 @@ func newMsgFromString(s string) (*Message, error) {
 
 	return &Message{
 		Head:    head,
+		RoomId:  roomId,
 		Version: utils.CurrentVersion,
 		Sub:     sub,
 		Content: content,
@@ -215,7 +252,6 @@ func newMsgFromString(s string) (*Message, error) {
 
 }
 
-// Register new commands here
 func getSubFromHead(head uint16) (Command, error) {
 	for _, v := range RegisteredHeads {
 		if v.Code == head {
@@ -225,7 +261,6 @@ func getSubFromHead(head uint16) (Command, error) {
 	return nil, utils.ErrNoCmdHeadFound(uint8(head))
 }
 
-// Register new strings here
 func getHeadFromString(s string) (uint16, error) {
 	for _, v := range RegisteredHeads {
 		if v.Name == s {
@@ -233,7 +268,26 @@ func getHeadFromString(s string) (uint16, error) {
 		}
 	}
 	return 0, utils.ErrBadString(s, nil)
+}
 
+func getRoomIdFromString(s *[]string) (int64, error) {
+	for i, v := range *s {
+		v = strings.ToLower(v)
+		v = strings.TrimPrefix(v, "-")
+		v = strings.TrimPrefix(v, "-")
+		if strings.HasPrefix(v, "roomid=") {
+			flag := strings.TrimPrefix(v, "roomid=")
+			num, err := strconv.ParseInt(flag, 10, 64)
+			if err != nil {
+				return -1, err
+			}
+
+			*s = append((*s)[:i], (*s)[i+1:]...)
+			return num, nil
+		}
+	}
+
+	return -1, utils.ErrNoRoomClient
 }
 
 func WaitReader(reader io.Reader) ([]Message, error) {
@@ -248,7 +302,7 @@ func WaitReader(reader io.Reader) ([]Message, error) {
 		return nil, err
 	}
 	if err != nil {
-		return nil, fmt.Errorf("connection closed or error reading length bytes: %#v", lengthBytes)
+		return nil, fmt.Errorf("reader in waitreader failed. io.ReadFull err: %w", err)
 	}
 
 	length := binary.BigEndian.Uint16(lengthBytes)
@@ -262,7 +316,7 @@ func WaitReader(reader io.Reader) ([]Message, error) {
 
 	// concat the two slices, putting length in the beginning
 	m := append(append([]byte{}, lengthBytes...), message...)
-	asdf, err := New(m)
+	asdf, err := New(m, nil)
 	if err != nil {
 		return nil, err
 	}

@@ -3,6 +3,7 @@ package server
 import (
 	"bufio"
 	"context"
+	"database/sql"
 	"io"
 	"net"
 	"sync"
@@ -15,7 +16,7 @@ import (
 
 type ServerParams struct {
 	ServerAddress string
-	Rooms         []Room
+	Rooms         map[int64]utils.ServerRoom
 }
 
 func CreateServer(p *ServerParams) error {
@@ -25,8 +26,8 @@ func CreateServer(p *ServerParams) error {
 	}
 
 	man := &Manager{
-		Lock:    sync.Mutex{},
-		Clients: []Client{},
+		Lock:  sync.Mutex{},
+		Rooms: p.Rooms,
 	}
 
 	go listen(listener, man)
@@ -45,9 +46,6 @@ func listen(listener net.Listener, man *Manager) {
 		}
 		go receive(conn, msgChan)
 		go handle(conn, msgChan, man)
-		whoMsg, _ := messages.New("who name=server isresponse=false")
-		msgChan <- whoMsg[0]
-
 	}
 }
 
@@ -76,7 +74,7 @@ func handle(conn net.Conn, msgChan chan messages.Message, man *Manager) {
 		var err error
 		switch msg := v.Sub.(type) {
 		case messages.ServerCommand:
-			response, err = msg.Execute()
+			response, err = msg.Execute(nil)
 			if err != nil {
 				utils.ErrorLogger.Printf("running cmd on server failed. cmd: %#v\n err:%s", msg, err)
 			}
@@ -88,31 +86,36 @@ func handle(conn net.Conn, msgChan chan messages.Message, man *Manager) {
 			}
 
 			if len(response) > 0 {
-				// utils.DebugLogger.Printf("Sending bits: %b\n", response)
-				man.BroadcastMessage(response)
+				utils.DebugLogger.Printf("Sending bits: %b\tstruct: %#v\n", response, v)
+				man.BroadcastMessage(v.RoomId, response)
 			}
 		case messages.AdminCommand:
 			switch admin := msg.(type) {
-			case *impl.Connect:
-				user, err := d.InsertUser(context.Background(), db.InsertUserParams{Username: admin.Name})
-				if err != nil {
-					utils.ErrorLogger.Printf("db insert user: %s", err)
-					ack, _ := messages.New(impl.Ack{Code: impl.AckCode.InternalServiceError, Message: "server had a database error"})
-					ackBits, _ := ack[0].ToBits()
-					conn.Write(ackBits)
+			case *impl.Join:
+				var user db.User
+				var err error
+				user, err = d.SelectUserByName(context.Background(), admin.Username)
+
+				if err != nil && err != sql.ErrNoRows {
+					utils.DebugLogger.Printf("db select user: %s", err)
+					conn.Write([]byte("500"))
 					continue
 				}
 
-				man.AddClient(Client{
-					Id:     user.ID,
-					Name:   user.Username,
-					Conn:   conn,
-					RoomId: admin.RoomId,
-				})
+				if err == sql.ErrNoRows {
+					user, err = d.InsertUser(context.Background(), admin.Username)
+					if err != nil {
+						utils.ErrorLogger.Printf("db insert user: %s", err)
+						conn.Write([]byte("500"))
+						continue
+					}
 
-				ack, _ := messages.New(impl.Ack{Code: impl.AckCode.Ok, Message: "connection accepted"})
-				ackBits, _ := ack[0].ToBits()
-				conn.Write(ackBits)
+				}
+
+				utils.DebugLogger.Printf("adding client name %s id %d", user.Username, user.ID)
+				man.AddClient(admin.RoomId, utils.Client{Id: user.ID, Name: user.Username, Conn: conn})
+
+				conn.Write([]byte("200"))
 			}
 		default:
 			utils.ErrorLogger.Printf("server got a non-command message: %#v\n", msg)

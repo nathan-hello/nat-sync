@@ -13,6 +13,7 @@ import (
 
 type ClientParams struct {
 	ServerAddress string
+	JoinedRooms   []int64
 	Player        players.Player
 	InputReader   io.Reader
 }
@@ -44,20 +45,31 @@ func receive(conn net.Conn, p *ClientParams) {
 	defer conn.Close()
 	reader := bufio.NewReader(conn)
 	for {
+
+		utils.DebugLogger.Printf("waitreader\n\n\n")
 		msgs, err := messages.WaitReader(reader)
+		utils.DebugLogger.Printf("got msg %#v\n\n", msgs)
 		if err == io.EOF {
+			utils.DebugLogger.Printf("connection closed EOF\n")
 			return
 		}
 		if err != nil {
 			utils.ErrorLogger.Printf("client got a bad message. error: %s\n", err)
 		}
 
-		utils.DebugLogger.Printf("got msg %#v\n\n", msgs)
 		for _, v := range msgs {
 			switch msg := v.Sub.(type) {
 			case messages.PlayerCommand:
 				utils.DebugLogger.Printf("appending cmd to playerqueue. cmd: %#v\n", msg)
 				p.Player.AppendQueue(msg)
+			// case messages.AdminCommand:
+			// 	switch admin := msg.(type) {
+			// 	case *impl.Join:
+			// 		p.CurrentRoom = admin.RoomId
+			// 		if !slices.Contains(p.JoinedRooms, admin.RoomId) {
+			// 			p.JoinedRooms = append(p.JoinedRooms, admin.RoomId)
+			// 		}
+			// 	}
 			default:
 				utils.ErrorLogger.Printf("client was given a command that was not a player command! %#v\n", msg)
 			}
@@ -84,23 +96,22 @@ func transmit(conn net.Conn, p *ClientParams) {
 			continue
 		}
 
-		var msgsToSend []messages.Message
-
-		if macro := messages.IsMacro(text); macro != nil {
-			msgsToSend = macro
-		} else {
-			msgs, err := messages.New(text)
-
-			if err != nil {
-				utils.ErrorLogger.Println(err)
-				continue
-			}
-			msgsToSend = msgs
+		macro := messages.IsMacro(text)
+		if macro != nil {
+			sendMsgs(conn, macro)
+			continue
 		}
-		sendMsgs(conn, msgsToSend)
 
+		msgs, err := messages.New(text, nil)
+		if err != nil {
+			utils.ErrorLogger.Println(err)
+			continue
+		}
+		sendMsgs(conn, msgs)
 	}
+
 }
+
 func sendMsgs(conn net.Conn, msgs []messages.Message) {
 	for _, m := range msgs {
 		bits, err := m.ToBits()

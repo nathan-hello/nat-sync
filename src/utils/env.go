@@ -16,21 +16,26 @@ import (
 // It should never be called until InitConfig() is done.
 var initialized bool
 
-type Room struct {
+type ServerRoom struct {
+	Id       int64
+	Name     string
+	Password string
+	Clients  map[int64]Client
+}
+
+type Client struct {
+	Id   int64
+	Name string
+	Conn net.Conn
+}
+
+type ClientSavedRoom struct {
 	ServerIp          string `json:"server_ip"`
+	RoomId            int64  `json:"room_id"`
 	RoomName          string `json:"room_name"`
 	Username          string `json:"username"`
 	EncryptedPassword string `json:"encrypted_password"`
 	Autoconnect       bool   `json:"connect_automatically"`
-}
-
-type Client struct {
-	Rooms []Room `json:"rooms"`
-}
-
-type ServerRoom struct {
-	Name              string `json:"name"`
-	EncryptedPassword string `json:"encrypted_password"`
 }
 
 type Server struct {
