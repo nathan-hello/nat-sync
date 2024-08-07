@@ -20,6 +20,7 @@ var RoomHead = struct {
 	KickAll: 3,
 }
 
+// These are not network responses
 var RoomExecuteResponses = struct {
 	Ok      []byte
 	KickAll []byte

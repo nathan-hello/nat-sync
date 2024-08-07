@@ -2,17 +2,21 @@ package client
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 	"net"
+	"slices"
 	"time"
 
 	"github.com/nathan-hello/nat-sync/src/client/players"
 	"github.com/nathan-hello/nat-sync/src/messages"
+	"github.com/nathan-hello/nat-sync/src/messages/impl"
 	"github.com/nathan-hello/nat-sync/src/utils"
 )
 
 type ClientParams struct {
 	ServerAddress string
+	CurrentRoom   int64
 	JoinedRooms   []int64
 	Player        players.Player
 	InputReader   io.Reader
@@ -62,14 +66,14 @@ func receive(conn net.Conn, p *ClientParams) {
 			case messages.PlayerCommand:
 				utils.DebugLogger.Printf("appending cmd to playerqueue. cmd: %#v\n", msg)
 				p.Player.AppendQueue(msg)
-			// case messages.AdminCommand:
-			// 	switch admin := msg.(type) {
-			// 	case *impl.Join:
-			// 		p.CurrentRoom = admin.RoomId
-			// 		if !slices.Contains(p.JoinedRooms, admin.RoomId) {
-			// 			p.JoinedRooms = append(p.JoinedRooms, admin.RoomId)
-			// 		}
-			// 	}
+			case messages.AdminCommand:
+				switch admin := msg.(type) {
+				case *impl.Accept:
+					p.CurrentRoom = admin.RoomId
+					if !slices.Contains(p.JoinedRooms, admin.RoomId) {
+						p.JoinedRooms = append(p.JoinedRooms, admin.RoomId)
+					}
+				}
 			default:
 				utils.ErrorLogger.Printf("client was given a command that was not a player command! %#v\n", msg)
 			}
@@ -80,19 +84,18 @@ func receive(conn net.Conn, p *ClientParams) {
 func transmit(conn net.Conn, p *ClientParams) {
 	scanner := bufio.NewScanner(p.InputReader)
 	for scanner.Scan() { // this blocks the terminal
+		fmt.Printf("<%d> ", p.CurrentRoom)
 		text := scanner.Text()
+		if text == "" {
+			continue
+		}
 		if IsLocalCommand(text) {
-			playerCmd, err := NewLocalCmd(text, p.Player)
+			cmd, err := NewLocal(text[1:], p.Player)
 			if err != nil {
 				utils.ErrorLogger.Println(err)
 				continue
 			}
-			newPlayer, err := playerCmd.Sub.ExecuteClient()
-			if err != nil {
-				utils.ErrorLogger.Println(err)
-				continue
-			}
-			p.Player = newPlayer
+			cmd.Execute(p)
 			continue
 		}
 
@@ -101,6 +104,8 @@ func transmit(conn net.Conn, p *ClientParams) {
 			sendMsgs(conn, macro)
 			continue
 		}
+
+		text = fmt.Sprintf("roomid=%d;%s", p.CurrentRoom, text)
 
 		msgs, err := messages.New(text, nil)
 		if err != nil {

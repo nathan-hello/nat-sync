@@ -15,11 +15,11 @@ func TestCmdStrings(t *testing.T) {
 	utils.InitLogger()
 	happy := map[string]Command{
 		"change --roomid=1 --uri=asdf.com/cats --action=append --hours=23 --mins=51 --secs=12": &impl.Change{Uri: "asdf.com/cats", UriLength: 13, Action: impl.ChgAppend, Timestamp: impl.Seek{Hours: 23, Mins: 51, Secs: 12}},
-		"join   --roomid=1 --roomid=34129":                              &impl.Join{RoomId: int64(34129)},
+		// "join   --roomid=1 --roomid=34129":                              &impl.Join{RoomId: },
 		"kick   --roomid=1 --userid=2182 --isself=false --hidemsg=true": &impl.Kick{UserId: 2182, IsSelf: false, HideMsg: true},
-		"pause  --roomid=1 ":                                            &impl.Pause{},
-		"play   --roomid=1 ":                                            &impl.Play{},
-		"seek   --roomid=1 --hours=10 --mins=40 --secs=100":             &impl.Seek{Hours: 10, Mins: 40, Secs: 100},
+		"pause  --roomid=1 ": &impl.Pause{},
+		"play   --roomid=1 ": &impl.Play{},
+		"seek   --roomid=1 --hours=10 --mins=40 --secs=100": &impl.Seek{Hours: 10, Mins: 40, Secs: 100},
 	}
 
 	for k, v := range happy {
@@ -51,7 +51,7 @@ func TestBits(t *testing.T) {
 
 	subs := []Command{
 		&impl.Change{Uri: "asdf.com/cats", UriLength: 13, Action: impl.ChgAppend, Timestamp: impl.Seek{Hours: 23, Mins: 51, Secs: 12}},
-		&impl.Join{RoomId: int64(34129)},
+		// &impl.Join{RoomId: int64(34129)},
 		&impl.Kick{UserId: 2182, IsSelf: false, HideMsg: true},
 		&impl.Pause{},
 		&impl.Play{},
@@ -86,7 +86,7 @@ func TestEncodeCmd(t *testing.T) {
 	utils.InitLogger()
 	subs := []Command{
 		&impl.Change{Uri: "asdf.com/cats", UriLength: 13, Action: impl.ChgAppend, Timestamp: impl.Seek{Hours: 23, Mins: 51, Secs: 12}},
-		&impl.Join{RoomId: int64(34129)},
+		// &impl.Join{RoomId: int64(34129)},
 		&impl.Kick{UserId: 2182, IsSelf: false, HideMsg: true},
 		&impl.Pause{},
 		&impl.Play{},

@@ -16,7 +16,7 @@ type Wait struct {
 
 func (c *Wait) GetHead() string { return "wait" }
 
-func (c *Wait) Execute() ([]byte, error) {
+func (c *Wait) Execute(_ interface{}) ([]byte, error) {
 	time.Sleep(time.Duration(c.Secs) * time.Second)
 	return []byte("success"), nil
 }

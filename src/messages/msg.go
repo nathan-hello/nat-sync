@@ -63,10 +63,6 @@ var RegisteredHeads = []RegisteredHead{
 	{200, "wait", &impl.Wait{}},
 }
 
-var HeadsWithoutRoom = []RegisteredHead{
-	{102, "join", &impl.Join{}},
-}
-
 func New(i any, roomId *int64) ([]Message, error) {
 
 	msgs := []Message{}
@@ -81,8 +77,14 @@ func New(i any, roomId *int64) ([]Message, error) {
 	case string:
 		utils.DebugLogger.Printf("string got: %s\n", t)
 		delmited := strings.Split(t, ";")
-		for _, s := range delmited {
-			m, err := newMsgFromString(s)
+		rId, err := getRoomIdFromString(&[]string{delmited[0]})
+		if err != nil {
+			return nil, err
+		}
+
+		for _, s := range delmited[1:] {
+
+			m, err := newMsgFromString(s, &rId)
 			if err != nil {
 				return nil, utils.ErrBadString(t, err)
 			}
@@ -114,6 +116,118 @@ func New(i any, roomId *int64) ([]Message, error) {
 
 	}
 	return nil, utils.ErrImpossible
+}
+
+// Returns a *Command without UserId field
+func newMsgFromString(s string, roomId *int64) (*Message, error) {
+	parts := strings.Fields(s)
+
+	if len(parts) == 0 {
+		return nil, nil
+	}
+
+	head, err := getHeadFromString(parts[0])
+	if err != nil {
+		return nil, err
+	}
+
+	sub, err := getSubFromHead(head)
+	if err != nil {
+		return nil, err
+	}
+
+	err = sub.New(parts[1:])
+	if err != nil {
+		return nil, err
+	}
+
+	content, err := sub.ToBits()
+	if err != nil {
+		return nil, err
+	}
+
+	return &Message{
+		Head:    head,
+		RoomId:  *roomId,
+		Version: utils.CurrentVersion,
+		Sub:     sub,
+		Content: content,
+	}, nil
+
+}
+
+func getSubFromHead(head uint16) (Command, error) {
+	for _, v := range RegisteredHeads {
+		if v.Code == head {
+			return v.Impl, nil
+		}
+	}
+	return nil, utils.ErrNoCmdHeadFound(uint8(head))
+}
+
+func getHeadFromString(s string) (uint16, error) {
+	for _, v := range RegisteredHeads {
+		if v.Name == s {
+			return v.Code, nil
+		}
+	}
+	return 0, utils.ErrBadString(s, nil)
+}
+
+func getRoomIdFromString(s *[]string) (int64, error) {
+	for i, v := range *s {
+		v = strings.ToLower(v)
+		v = strings.TrimPrefix(v, "-")
+		v = strings.TrimPrefix(v, "-")
+		if strings.HasPrefix(v, "roomid=") {
+			flag := strings.TrimPrefix(v, "roomid=")
+			num, err := strconv.ParseInt(flag, 10, 64)
+			if err != nil {
+				return -1, err
+			}
+
+			*s = append((*s)[:i], (*s)[i+1:]...)
+			return num, nil
+		}
+	}
+
+	return -1, utils.ErrNoRoomClient
+}
+
+// WaitReader blocks until a new message of the appropiate format is received.
+// If a byte stream is read but is not of the format Message.ToBits() provides,
+// this will hang indefinitely.
+func WaitReader(reader io.Reader) ([]Message, error) {
+
+	lengthBytes := make([]byte, 2)
+
+	// Block until a new message is read, then advance reader two bytes.
+	// We will add those bytes back in just a second.
+	_, err := io.ReadFull(reader, lengthBytes)
+	if err == io.EOF {
+		return nil, err
+	}
+	if err != nil {
+		return nil, fmt.Errorf("reader in waitreader failed. io.ReadFull err: %w", err)
+	}
+
+	length := binary.BigEndian.Uint16(lengthBytes)
+
+	message := make([]byte, length)
+
+	n, err := io.ReadFull(reader, message)
+	if err != nil || uint16(n) != length {
+		return nil, fmt.Errorf("bytes read: %d, expected: %d", n, length)
+	}
+
+	// concat the two slices, putting length in the beginning
+	m := append(append([]byte{}, lengthBytes...), message...)
+	asdf, err := New(m, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return asdf, nil
 }
 
 func (cmd *Message) ToBits() ([]byte, error) {
@@ -197,129 +311,4 @@ func newMsgFromBits(bits []byte) (*Message, error) {
 	// utils.DebugLogger.Printf("decoded struct: %#v\n", msg)
 
 	return &msg, nil
-}
-
-// Returns a *Command without UserId field
-func newMsgFromString(s string) (*Message, error) {
-	parts := strings.Fields(s)
-
-	if len(parts) == 0 {
-		return nil, nil
-	}
-
-	head, err := getHeadFromString(parts[0])
-	if err != nil {
-		return nil, err
-	}
-
-	getRoom := true
-	for _, v := range HeadsWithoutRoom {
-		if v.Code == head {
-			getRoom = false
-		}
-	}
-
-	var roomId int64
-	if getRoom {
-		roomId, err = getRoomIdFromString(&parts)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	sub, err := getSubFromHead(head)
-	if err != nil {
-		return nil, err
-	}
-
-	err = sub.New(parts[1:])
-	if err != nil {
-		return nil, err
-	}
-
-	content, err := sub.ToBits()
-	if err != nil {
-		return nil, err
-	}
-
-	return &Message{
-		Head:    head,
-		RoomId:  roomId,
-		Version: utils.CurrentVersion,
-		Sub:     sub,
-		Content: content,
-	}, nil
-
-}
-
-func getSubFromHead(head uint16) (Command, error) {
-	for _, v := range RegisteredHeads {
-		if v.Code == head {
-			return v.Impl, nil
-		}
-	}
-	return nil, utils.ErrNoCmdHeadFound(uint8(head))
-}
-
-func getHeadFromString(s string) (uint16, error) {
-	for _, v := range RegisteredHeads {
-		if v.Name == s {
-			return v.Code, nil
-		}
-	}
-	return 0, utils.ErrBadString(s, nil)
-}
-
-func getRoomIdFromString(s *[]string) (int64, error) {
-	for i, v := range *s {
-		v = strings.ToLower(v)
-		v = strings.TrimPrefix(v, "-")
-		v = strings.TrimPrefix(v, "-")
-		if strings.HasPrefix(v, "roomid=") {
-			flag := strings.TrimPrefix(v, "roomid=")
-			num, err := strconv.ParseInt(flag, 10, 64)
-			if err != nil {
-				return -1, err
-			}
-
-			*s = append((*s)[:i], (*s)[i+1:]...)
-			return num, nil
-		}
-	}
-
-	return -1, utils.ErrNoRoomClient
-}
-
-func WaitReader(reader io.Reader) ([]Message, error) {
-
-	lengthBytes := make([]byte, 2)
-
-	// this is where receieve blocks until new trasmission is heard
-	// because it is a read in the gopher's language, it advances the reader two bytes
-	// we will add those bytes back in just a second
-	_, err := io.ReadFull(reader, lengthBytes)
-	if err == io.EOF {
-		return nil, err
-	}
-	if err != nil {
-		return nil, fmt.Errorf("reader in waitreader failed. io.ReadFull err: %w", err)
-	}
-
-	length := binary.BigEndian.Uint16(lengthBytes)
-
-	message := make([]byte, length)
-
-	n, err := io.ReadFull(reader, message)
-	if err != nil || uint16(n) != length {
-		return nil, fmt.Errorf("bytes read: %d, expected: %d", n, length)
-	}
-
-	// concat the two slices, putting length in the beginning
-	m := append(append([]byte{}, lengthBytes...), message...)
-	asdf, err := New(m, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return asdf, nil
 }

@@ -98,7 +98,6 @@ func handle(conn net.Conn, msgChan chan messages.Message, man *Manager) {
 
 				if err != nil && err != sql.ErrNoRows {
 					utils.DebugLogger.Printf("db select user: %s", err)
-					conn.Write([]byte("500"))
 					continue
 				}
 
@@ -106,20 +105,47 @@ func handle(conn net.Conn, msgChan chan messages.Message, man *Manager) {
 					user, err = d.InsertUser(context.Background(), admin.Username)
 					if err != nil {
 						utils.ErrorLogger.Printf("db insert user: %s", err)
-						conn.Write([]byte("500"))
 						continue
 					}
-
 				}
 
-				utils.DebugLogger.Printf("adding client name %s id %d", user.Username, user.ID)
-				man.AddClient(admin.RoomId, utils.Client{Id: user.ID, Name: user.Username, Conn: conn})
+				var room db.SelectRoomByNameRow
+				room, err = d.SelectRoomByName(context.Background(), admin.RoomName)
+				if err != nil {
+					if err == sql.ErrNoRows {
+						err = d.InsertRoom(context.Background(), db.InsertRoomParams{Name: admin.RoomName})
+						if err != nil {
+							utils.ErrorLogger.Printf("could not add requested room. request: %#v\n database err: %s", admin, err)
+							continue
+						}
+						room, err = d.SelectRoomByName(context.Background(), admin.RoomName)
+						if err != nil {
+							utils.ErrorLogger.Printf("could not select requested room that was just made. request: %#v\n database err: %s", admin, err)
+							continue
+						}
+					} else {
+						utils.ErrorLogger.Printf("could not select requested room. request: %#v\n database err: %s", admin, err)
+						continue
 
-				conn.Write([]byte("200"))
+					}
+
+					utils.DebugLogger.Printf("adding client name %s id %d", user.Username, user.ID)
+					man.AddClient(room.ID, utils.Client{Id: user.ID, Name: user.Username, Conn: conn})
+
+					accept, err := messages.New(&impl.Accept{Action: impl.AcceptHead.Ok, RoomId: room.ID}, &v.RoomId)
+					if err != nil {
+						utils.ErrorLogger.Printf("could not respond to room request: %#v\n database err: %s", admin, err)
+					}
+					respBits, _ := accept[0].ToBits()
+					conn.Write(respBits)
+
+					change, err := messages.New(&impl.Change{Action: impl.ChgImmediate}, &accept[0].RoomId)
+
+				}
+			default:
+				utils.ErrorLogger.Printf("server got a non-command message: %#v\n", msg)
+
 			}
-		default:
-			utils.ErrorLogger.Printf("server got a non-command message: %#v\n", msg)
-
 		}
 	}
 }

@@ -3,33 +3,38 @@ package impl
 import (
 	"bytes"
 	"encoding/binary"
-	"strconv"
 	"strings"
 
 	"github.com/nathan-hello/nat-sync/src/utils"
 )
 
 type Join struct {
-	RoomId   int64
-	UserId   int64
-	UserLen  uint16
+	RoomLen  uint8
+	RoomName string
+	UserLen  uint8
 	Username string
 }
 
 func (c *Join) GetHead() string { return "join" }
 
 func (c *Join) ToBits() ([]byte, error) {
-	if len(c.Username) > 65534 {
+	if len(c.Username) > 255 {
 		return nil, utils.ErrBadArgs([]string{"username too large", c.Username})
 	}
-	c.UserLen = uint16(len(c.Username))
+	c.UserLen = uint8(len(c.RoomName))
+
+	if len(c.RoomName) > 255 {
+		return nil, utils.ErrBadArgs([]string{"roomname too large", c.RoomName})
+	}
+	c.RoomLen = uint8(len(c.RoomName))
+
 	var bits = new(bytes.Buffer)
 
-	if err := binary.Write(bits, binary.BigEndian, c.RoomId); err != nil {
+	if err := binary.Write(bits, binary.BigEndian, c.RoomLen); err != nil {
 		return nil, err
 	}
 
-	if err := binary.Write(bits, binary.BigEndian, c.UserId); err != nil {
+	if err := binary.Write(bits, binary.BigEndian, []byte(c.RoomName)); err != nil {
 		return nil, err
 	}
 
@@ -59,13 +64,14 @@ func (c *Join) New(t any) error {
 func (c *Join) newFromBits(bits []byte) error {
 	buf := bytes.NewReader(bits)
 
-	if err := binary.Read(buf, binary.BigEndian, &c.RoomId); err != nil {
+	if err := binary.Read(buf, binary.BigEndian, &c.RoomLen); err != nil {
 		return err
 	}
-
-	if err := binary.Read(buf, binary.BigEndian, &c.UserId); err != nil {
+	roomBits := make([]byte, c.RoomLen)
+	if err := binary.Read(buf, binary.BigEndian, roomBits); err != nil {
 		return err
 	}
+	c.RoomName = string(roomBits)
 
 	if err := binary.Read(buf, binary.BigEndian, &c.UserLen); err != nil {
 		return err
@@ -89,40 +95,30 @@ func (c *Join) newFromString(s []string) error {
 		v = strings.TrimPrefix(v, "-")
 		v = strings.TrimPrefix(v, "-")
 		switch {
-		case strings.HasPrefix(v, "roomid="):
+		case strings.HasPrefix(v, "roomname="):
 			v = strings.ToLower(v)
-			flag, _ := strings.CutPrefix(v, "roomid=")
+			flag, _ := strings.CutPrefix(v, "roomname=")
 			flag, _ = strings.CutPrefix(flag, "\"")
 			flag, _ = strings.CutSuffix(flag, "\"")
-			i, err := strconv.ParseUint(flag, 10, 16)
-			if err != nil {
-				return utils.ErrBadArgs(s)
+			if len(flag) > 255 {
+				return utils.ErrBadArgs([]string{"roomname too large. max is 255 characters", strings.Join(s, " ")})
 			}
-			c.RoomId = int64(i)
-		case strings.HasPrefix(v, "userid="):
-			v = strings.ToLower(v)
-			flag, _ := strings.CutPrefix(v, "userid=")
-			flag, _ = strings.CutPrefix(flag, "\"")
-			flag, _ = strings.CutSuffix(flag, "\"")
-			i, err := strconv.ParseUint(flag, 10, 16)
-			if err != nil {
-				return utils.ErrBadArgs(s)
-			}
-			c.UserId = int64(i)
+			c.RoomLen = uint8(len(c.RoomName))
+			c.RoomName = flag
 		case strings.HasPrefix(v, "username="):
 			flag, _ := strings.CutPrefix(v, "username=")
 			flag, _ = strings.CutPrefix(flag, "\"")
 			flag, _ = strings.CutSuffix(flag, "\"")
-			if len(flag) > 65534 {
-				return utils.ErrBadArgs([]string{"username too large", strings.Join(s, " ")})
+			if len(flag) > 255 {
+				return utils.ErrBadArgs([]string{"username too large. max is 255 characters", strings.Join(s, " ")})
 			}
-			c.UserLen = uint16(len(flag))
+			c.UserLen = uint8(len(flag))
 			c.Username = flag
 		}
 	}
 
-	if c.RoomId == 0 {
-		return utils.ErrRequiredArgs("join required arg roomid=<uint16>")
+	if c.RoomName == "" || c.Username == "" {
+		return utils.ErrRequiredArgs("join required arg roomname=<string> username=<string>")
 	}
 
 	return nil
