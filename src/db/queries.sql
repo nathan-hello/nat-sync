@@ -11,6 +11,11 @@ SELECT id, name FROM rooms WHERE id = ?;
 SELECT id, name FROM rooms WHERE name = ?;
 -- name: UpdateRoomNameById :exec
 UPDATE rooms SET name = ? WHERE id = ?;
+-- name: SelectCurrentVideoByRoomId :one
+SELECT video.uri, video.local FROM rooms
+JOIN video ON rooms.currently_playing = video.id
+WHERE rooms.id = ?;
+
 
 -- table: users
 -- name: InsertUser :one
