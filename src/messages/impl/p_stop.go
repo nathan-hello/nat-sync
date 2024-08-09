@@ -7,6 +7,7 @@ import (
 type Stop struct {
 }
 
+func (c *Stop) IsPlayer() bool  { return true }
 func (c *Stop) GetHead() string { return "stop" }
 func (c *Stop) New(t any) error {
 	switch s := t.(type) {

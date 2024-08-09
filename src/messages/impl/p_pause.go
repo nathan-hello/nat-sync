@@ -7,6 +7,7 @@ import (
 type Pause struct {
 }
 
+func (c *Pause) IsPlayer() bool  { return true }
 func (c *Pause) GetHead() string { return "pause" }
 func (c *Pause) ToPlayer(p utils.LocalTarget) ([]byte, error) {
 	return []byte(`{"command":["set_property","pause",true]}`), nil

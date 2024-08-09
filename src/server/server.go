@@ -70,13 +70,13 @@ func handle(conn net.Conn, msgChan chan messages.Message, p *ServerParams) {
 		var response []byte
 		var err error
 		switch msg := v.Sub.(type) {
-		case messages.ServerCommand:
+		case impl.ServerCommand:
 			response, err = msg.Execute(nil)
 			if err != nil {
 				utils.ErrorLogger.Printf("running cmd on server failed. cmd: %#v\n err:%s", msg, err)
 			}
 			utils.DebugLogger.Printf("server executed sub %#v\nresponse: %s\n", msg, response)
-		case messages.PlayerCommand:
+		case impl.PlayerCommand:
 			response, err = v.MarshalBinary()
 			if err != nil {
 				utils.ErrorLogger.Printf("encoding command. cmd: %#v\n err:%s", msg, err)
@@ -86,7 +86,7 @@ func handle(conn net.Conn, msgChan chan messages.Message, p *ServerParams) {
 				utils.DebugLogger.Printf("Sending bits: %b\tstruct: %#v\n", response, v)
 				p.Manager.BroadcastMessage(v.RoomId, response)
 			}
-		case messages.AdminCommand:
+		case impl.AdminCommand:
 			handleAdminMessage(conn, p, v)
 		}
 	}
@@ -129,5 +129,4 @@ func handleAdminMessage(conn net.Conn, p *ServerParams, msg messages.Message) {
 		utils.ErrorLogger.Printf("server got a non-command message: %#v\n", msg)
 
 	}
-
 }

@@ -37,6 +37,7 @@ type Room struct {
 	Head     uint16
 }
 
+func (c *Room) IsServer() bool  { return true }
 func (c *Room) GetHead() string { return "connect" }
 func (c *Room) ToBits() ([]byte, error) {
 	var bits = new(bytes.Buffer)

@@ -18,49 +18,7 @@ type Message struct {
 	Head    uint16
 	Version uint16
 	Content []byte
-	Sub     Command
-}
-
-type Command interface {
-	New(any) error
-	ToBits() ([]byte, error)
-	GetHead() string
-}
-
-type PlayerCommand interface {
-	New(any) error
-	ToBits() ([]byte, error)
-	ToPlayer(p utils.LocalTarget) ([]byte, error)
-}
-
-type AdminCommand interface {
-	New(any) error
-	ToBits() ([]byte, error)
-}
-
-type ServerCommand interface {
-	New(any) error
-	ToBits() ([]byte, error)
-	Execute(executor interface{}) ([]byte, error)
-}
-
-type RegisteredHead struct {
-	Code uint16
-	Name string
-	Impl Command
-}
-
-var RegisteredHeads = []RegisteredHead{
-	{1, "change", &impl.Change{}},
-	{2, "pause", &impl.Pause{}},
-	{3, "play", &impl.Play{}},
-	{4, "seek", &impl.Seek{}},
-	{5, "stop", &impl.Stop{}},
-	{6, "quit", &impl.Quit{}},
-	{100, "ack", &impl.Ack{}},
-	{101, "kick", &impl.Kick{}},
-	{102, "join", &impl.Join{}},
-	{200, "wait", &impl.Wait{}},
+	Sub     impl.Command
 }
 
 func NewMulti(bits []byte) ([]Message, error) {
@@ -86,7 +44,7 @@ func NewMulti(bits []byte) ([]Message, error) {
 	return msgs, nil
 }
 
-func NewFromSub(c Command, roomId int64) Message {
+func NewFromSub(c impl.Command, roomId int64) Message {
 	head, _ := getHeadFromString(c.GetHead())
 	return Message{
 		Head:    head,
@@ -250,8 +208,8 @@ func (msg *Message) UnmarshalBinary(data []byte) error {
 	return nil
 }
 
-func getSubFromHead(head uint16) (Command, error) {
-	for _, v := range RegisteredHeads {
+func getSubFromHead(head uint16) (impl.Command, error) {
+	for _, v := range impl.RegisteredCmds() {
 		if v.Code == head {
 			return v.Impl, nil
 		}
@@ -260,7 +218,7 @@ func getSubFromHead(head uint16) (Command, error) {
 }
 
 func getHeadFromString(s string) (uint16, error) {
-	for _, v := range RegisteredHeads {
+	for _, v := range impl.RegisteredCmds() {
 		if v.Name == s {
 			return v.Code, nil
 		}

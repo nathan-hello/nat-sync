@@ -18,6 +18,7 @@ type Seek struct {
 	Secs  uint8
 }
 
+func (c *Seek) IsPlayer() bool  { return true }
 func (c *Seek) GetHead() string { return "seek" }
 func (c *Seek) ToPlayer(p utils.LocalTarget) ([]byte, error) {
 	secs := uint(c.Hours)*3600 + uint(c.Mins)*60 + uint(c.Secs)

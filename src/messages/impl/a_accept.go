@@ -29,6 +29,8 @@ var AcceptHead = struct {
 	NotAllowed:    5,
 }
 
+func (c *Accept) IsAdmin() bool { return true }
+
 func (c *Accept) GetHead() string { return "accept" }
 
 func (c *Accept) ToBits() ([]byte, error) {

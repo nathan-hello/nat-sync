@@ -13,7 +13,7 @@ var roomId int64 = 1
 
 func TestCmdStrings(t *testing.T) {
 	utils.InitLogger()
-	happy := map[string]Command{
+	happy := map[string]impl.Command{
 		"1 change --uri=asdf.com/cats --action=append --hours=23 --mins=51 --secs=12": &impl.Change{Uri: "asdf.com/cats", UriLength: 13, Action: impl.ChgAppend, Timestamp: impl.Seek{Hours: 23, Mins: 51, Secs: 12}},
 		"1 kick   --userid=2182 --isself=false --hidemsg=true":                        &impl.Kick{UserId: 2182, IsSelf: false, HideMsg: true},
 		"1 seek --hours=10 --mins=40 --secs=100":                                      &impl.Seek{Hours: 10, Mins: 40, Secs: 100},
@@ -41,7 +41,7 @@ func TestCmdStrings(t *testing.T) {
 
 func TestBits(t *testing.T) {
 	utils.InitLogger()
-	empties := []Command{
+	empties := []impl.Command{
 		&impl.Change{},
 		// &impl.Join{},
 		&impl.Kick{},
@@ -50,7 +50,7 @@ func TestBits(t *testing.T) {
 		&impl.Seek{},
 	}
 
-	subs := []Command{
+	subs := []impl.Command{
 		&impl.Change{Uri: "asdf.com/cats", UriLength: 13, Action: impl.ChgAppend, Timestamp: impl.Seek{Hours: 23, Mins: 51, Secs: 12}},
 		// &impl.Join{RoomId: int64(34129)},
 		&impl.Kick{UserId: 2182, IsSelf: false, HideMsg: true},
@@ -85,7 +85,7 @@ func assert(test bool, t *testing.T, msg string) {
 
 func TestEncodeCmd(t *testing.T) {
 	utils.InitLogger()
-	subs := []Command{
+	subs := []impl.Command{
 		&impl.Change{Uri: "asdf.com/cats", UriLength: 13, Action: impl.ChgAppend, Timestamp: impl.Seek{Hours: 23, Mins: 51, Secs: 12}},
 		// &impl.Join{RoomId: int64(34129)},
 		&impl.Kick{UserId: 2182, IsSelf: false, HideMsg: true},

@@ -9,8 +9,9 @@ type Quitter interface {
 }
 
 type Quit struct {
-	QuitFunc Quitter
 }
+
+func (c *Quit) IsPlayer() bool { return true }
 
 func (c *Quit) GetHead() string { return "quit" }
 func (c *Quit) ToPlayer(p utils.LocalTarget) ([]byte, error) {

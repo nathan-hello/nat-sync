@@ -10,6 +10,7 @@ type Play struct {
 	User string
 }
 
+func (c *Play) IsPlayer() bool  { return true }
 func (c *Play) GetHead() string { return "play" }
 func (c *Play) ToPlayer(p utils.LocalTarget) ([]byte, error) {
 

@@ -26,12 +26,9 @@ type Ack struct {
 	Message string
 }
 
-func (c *Ack) GetHead() string { return "ack" }
+func (c *Ack) IsAdmin() bool { return true }
 
-func (c *Ack) Execute(loc int, executor interface{}) ([]byte, error) {
-	utils.DebugLogger.Printf("received ack: %#v\n", c)
-	return nil, nil
-}
+func (c *Ack) GetHead() string { return "ack" }
 
 func (a *Ack) ToBits() ([]byte, error) {
 	bits := new(bytes.Buffer)

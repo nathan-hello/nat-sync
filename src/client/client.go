@@ -67,10 +67,10 @@ func receive(conn net.Conn, p *ClientParams) {
 
 func handleMessage(_ net.Conn, p *ClientParams, msg messages.Message) {
 	switch msg := msg.Sub.(type) {
-	case messages.PlayerCommand:
+	case impl.PlayerCommand:
 		utils.DebugLogger.Printf("appending cmd to playerqueue. cmd: %#v\n", msg)
 		p.Player.AppendQueue(msg)
-	case messages.AdminCommand:
+	case impl.AdminCommand:
 		switch admin := msg.(type) {
 		case *impl.Accept:
 			p.CurrentRoom = admin.RoomId

@@ -15,6 +15,8 @@ type Join struct {
 	Username string
 }
 
+func (c *Join) IsAdmin() bool { return true }
+
 func (c *Join) GetHead() string { return "join" }
 
 func (c *Join) ToBits() ([]byte, error) {

@@ -15,6 +15,11 @@ type Kick struct {
 	HideMsg bool
 }
 
+func (c *Kick) Execute(_ interface{}) ([]byte, error) {
+	return nil, utils.ErrNotImplemented("kick")
+}
+func (c *Kick) IsServer() bool { return true }
+
 func (c *Kick) GetHead() string { return "kick" }
 
 func (c *Kick) New(t any) error {

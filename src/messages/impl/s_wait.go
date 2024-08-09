@@ -14,6 +14,7 @@ type Wait struct {
 	Secs uint8
 }
 
+func (c *Wait) IsServer() bool  { return true }
 func (c *Wait) GetHead() string { return "wait" }
 
 func (c *Wait) Execute(_ interface{}) ([]byte, error) {
