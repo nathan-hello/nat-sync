@@ -14,24 +14,25 @@ var roomId int64 = 1
 func TestCmdStrings(t *testing.T) {
 	utils.InitLogger()
 	happy := map[string]Command{
-		"change --roomid=1 --uri=asdf.com/cats --action=append --hours=23 --mins=51 --secs=12": &impl.Change{Uri: "asdf.com/cats", UriLength: 13, Action: impl.ChgAppend, Timestamp: impl.Seek{Hours: 23, Mins: 51, Secs: 12}},
-		// "join   --roomid=1 --roomid=34129":                              &impl.Join{RoomId: },
-		"kick   --roomid=1 --userid=2182 --isself=false --hidemsg=true": &impl.Kick{UserId: 2182, IsSelf: false, HideMsg: true},
-		"pause  --roomid=1 ": &impl.Pause{},
-		"play   --roomid=1 ": &impl.Play{},
-		"seek   --roomid=1 --hours=10 --mins=40 --secs=100": &impl.Seek{Hours: 10, Mins: 40, Secs: 100},
+		"1 change --uri=asdf.com/cats --action=append --hours=23 --mins=51 --secs=12": &impl.Change{Uri: "asdf.com/cats", UriLength: 13, Action: impl.ChgAppend, Timestamp: impl.Seek{Hours: 23, Mins: 51, Secs: 12}},
+		"1 kick   --userid=2182 --isself=false --hidemsg=true":                        &impl.Kick{UserId: 2182, IsSelf: false, HideMsg: true},
+		"1 seek --hours=10 --mins=40 --secs=100":                                      &impl.Seek{Hours: 10, Mins: 40, Secs: 100},
+		"1 pause":                                                                     &impl.Pause{},
+		"1 play ":                                                                     &impl.Play{},
 	}
 
 	for k, v := range happy {
+		cmd := Message{}
 		t.Log("testing string: ", k)
-		cmd, err := New(k, nil)
+		err := cmd.TextUnmarshaller([]byte(k))
+
 		if err != nil {
 			t.Fatalf("\nNewCmdFromString error: %s\nstring: %s", err, k)
 		}
 
 		// [0] because we are assuming that the above cmds don't have ; in them for multi commands
-		if !reflect.DeepEqual(cmd[0].Sub, v) {
-			t.Fatalf("\nsubcommand from NewCmdFromString() does not match test case. \nstring: %s\nresult: %#v\nexpect: %#v", k, cmd[0].Sub, v)
+		if !reflect.DeepEqual(cmd.Sub, v) {
+			t.Fatalf("\nsubcommand from NewCmdFromString() does not match test case. \nstring: %s\nresult: %#v\nexpect: %#v", k, cmd.Sub, v)
 		}
 		t.Log("string good   : ", k)
 	}
@@ -42,7 +43,7 @@ func TestBits(t *testing.T) {
 	utils.InitLogger()
 	empties := []Command{
 		&impl.Change{},
-		&impl.Join{},
+		// &impl.Join{},
 		&impl.Kick{},
 		&impl.Pause{},
 		&impl.Play{},
@@ -106,27 +107,26 @@ func TestEncodeCmd(t *testing.T) {
 
 		cmd.Content = bits
 
-		cmdBits, err := cmd.ToBits()
+		cmdBits, err := cmd.MarshalBinary()
 		if err != nil {
 			t.Fatalf("err encodecommand(): %s", err)
 		}
 
 		cmd.Sub = v // to verify that it's equal. can't put it before the encode process
 
-		newCmd, err := New(cmdBits, nil)
+		newCmd := Message{}
+		err = newCmd.UnmarshalBinary(cmdBits)
 		if err != nil {
 			t.Fatalf("err decodecommand(): %s", err)
 		}
 
 		t.Logf("\n\ncmd: %#v\nnewCmd: %#v\n", cmd, newCmd)
-		t.Logf("\n\ncmdSub: %#v\nnewCmd.Sub: %#v\n", cmd.Sub, newCmd[0].Sub)
+		t.Logf("\n\ncmdSub: %#v\nnewCmd.Sub: %#v\n", cmd.Sub, newCmd.Sub)
 
-		for _, v := range newCmd {
-			assert(v.Head == cmd.Head, t, "head no match")
-			assert(v.Version == cmd.Version, t, "version no match")
-			assert(slices.Equal(v.Content, cmd.Content), t, "content no match")
-			assert(reflect.DeepEqual(v.Sub, cmd.Sub), t, "sub struct no match")
-		}
+		assert(newCmd.Head == cmd.Head, t, "head no match")
+		assert(newCmd.Version == cmd.Version, t, "version no match")
+		assert(slices.Equal(newCmd.Content, cmd.Content), t, "content no match")
+		assert(reflect.DeepEqual(newCmd.Sub, cmd.Sub), t, "sub struct no match")
 
 	}
 

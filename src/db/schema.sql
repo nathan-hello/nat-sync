@@ -6,10 +6,6 @@ CREATE TABLE IF NOT EXISTS rooms (
     FOREIGN KEY (currently_playing) REFERENCES video(id)
 );
 
-CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username TEXT UNIQUE NOT NULL,
-);
 
 CREATE TABLE IF NOT EXISTS video (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -24,9 +20,14 @@ CREATE TABLE IF NOT EXISTS room_history (
     FOREIGN KEY (video_id) REFERENCES video(id)
 );
 
-CREATE TABLE IF NOT EXISTS user_history (
-    user_id INTEGER,
-    video_id INTEGER,
-    FOREIGN KEY (user_id) REFERENCES users(id),
-    FOREIGN KEY (video_id) REFERENCES video(id)
-);
+-- CREATE TABLE IF NOT EXISTS users (
+--     id INTEGER PRIMARY KEY AUTOINCREMENT,
+--     username TEXT UNIQUE NOT NULL,
+-- );
+
+-- CREATE TABLE IF NOT EXISTS user_history (
+--     user_id INTEGER,
+--     video_id INTEGER,
+--     FOREIGN KEY (user_id) REFERENCES users(id),
+--     FOREIGN KEY (video_id) REFERENCES video(id)
+-- );

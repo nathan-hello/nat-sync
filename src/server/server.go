@@ -3,7 +3,6 @@ package server
 import (
 	"bufio"
 	"context"
-	"database/sql"
 	"io"
 	"net"
 	"sync"
@@ -17,6 +16,7 @@ import (
 type ServerParams struct {
 	ServerAddress string
 	Rooms         map[int64]utils.ServerRoom
+	Manager       *Manager
 }
 
 func CreateServer(p *ServerParams) error {
@@ -25,18 +25,18 @@ func CreateServer(p *ServerParams) error {
 		return err
 	}
 
-	man := &Manager{
+	p.Manager = &Manager{
 		Lock:  sync.Mutex{},
 		Rooms: p.Rooms,
 	}
 
-	go listen(listener, man)
+	go listen(listener, p)
 	utils.DebugLogger.Println("started server at " + p.ServerAddress)
 
 	return nil
 }
 
-func listen(listener net.Listener, man *Manager) {
+func listen(listener net.Listener, p *ServerParams) {
 	msgChan := make(chan messages.Message)
 	for {
 		conn, err := listener.Accept()
@@ -45,7 +45,7 @@ func listen(listener net.Listener, man *Manager) {
 			continue
 		}
 		go receive(conn, msgChan)
-		go handle(conn, msgChan, man)
+		go handle(conn, msgChan, p)
 	}
 }
 
@@ -53,7 +53,7 @@ func receive(conn net.Conn, msgChan chan messages.Message) {
 	defer conn.Close()
 	reader := bufio.NewReader(conn)
 	for {
-		msgs, err := messages.WaitReader(reader)
+		msg, err := messages.WaitReader(reader)
 		if err == io.EOF {
 			close(msgChan)
 			return
@@ -61,14 +61,11 @@ func receive(conn net.Conn, msgChan chan messages.Message) {
 		if err != nil {
 			utils.ErrorLogger.Printf("server got a bad message. error: %s\n", err)
 		}
-		for _, v := range msgs {
-			msgChan <- v
-		}
+		msgChan <- msg
 	}
 }
 
-func handle(conn net.Conn, msgChan chan messages.Message, man *Manager) {
-	d := db.Db()
+func handle(conn net.Conn, msgChan chan messages.Message, p *ServerParams) {
 	for v := range msgChan {
 		var response []byte
 		var err error
@@ -80,72 +77,57 @@ func handle(conn net.Conn, msgChan chan messages.Message, man *Manager) {
 			}
 			utils.DebugLogger.Printf("server executed sub %#v\nresponse: %s\n", msg, response)
 		case messages.PlayerCommand:
-			response, err = v.ToBits()
+			response, err = v.MarshalBinary()
 			if err != nil {
 				utils.ErrorLogger.Printf("encoding command. cmd: %#v\n err:%s", msg, err)
 			}
 
 			if len(response) > 0 {
 				utils.DebugLogger.Printf("Sending bits: %b\tstruct: %#v\n", response, v)
-				man.BroadcastMessage(v.RoomId, response)
+				p.Manager.BroadcastMessage(v.RoomId, response)
 			}
 		case messages.AdminCommand:
-			switch admin := msg.(type) {
-			case *impl.Join:
-				var user db.User
-				var err error
-				user, err = d.SelectUserByName(context.Background(), admin.Username)
-
-				if err != nil && err != sql.ErrNoRows {
-					utils.DebugLogger.Printf("db select user: %s", err)
-					continue
-				}
-
-				if err == sql.ErrNoRows {
-					user, err = d.InsertUser(context.Background(), admin.Username)
-					if err != nil {
-						utils.ErrorLogger.Printf("db insert user: %s", err)
-						continue
-					}
-				}
-
-				var room db.SelectRoomByNameRow
-				room, err = d.SelectRoomByName(context.Background(), admin.RoomName)
-				if err != nil {
-					if err == sql.ErrNoRows {
-						err = d.InsertRoom(context.Background(), db.InsertRoomParams{Name: admin.RoomName})
-						if err != nil {
-							utils.ErrorLogger.Printf("could not add requested room. request: %#v\n database err: %s", admin, err)
-							continue
-						}
-						room, err = d.SelectRoomByName(context.Background(), admin.RoomName)
-						if err != nil {
-							utils.ErrorLogger.Printf("could not select requested room that was just made. request: %#v\n database err: %s", admin, err)
-							continue
-						}
-					} else {
-						utils.ErrorLogger.Printf("could not select requested room. request: %#v\n database err: %s", admin, err)
-						continue
-
-					}
-
-					utils.DebugLogger.Printf("adding client name %s id %d", user.Username, user.ID)
-					man.AddClient(room.ID, utils.Client{Id: user.ID, Name: user.Username, Conn: conn})
-
-					accept, err := messages.New(&impl.Accept{Action: impl.AcceptHead.Ok, RoomId: room.ID}, &v.RoomId)
-					if err != nil {
-						utils.ErrorLogger.Printf("could not respond to room request: %#v\n database err: %s", admin, err)
-					}
-					respBits, _ := accept[0].ToBits()
-					conn.Write(respBits)
-
-					change, err := messages.New(&impl.Change{Action: impl.ChgImmediate}, &accept[0].RoomId)
-
-				}
-			default:
-				utils.ErrorLogger.Printf("server got a non-command message: %#v\n", msg)
-
-			}
+			handleAdminMessage(conn, p, v)
 		}
 	}
+}
+
+func handleAdminMessage(conn net.Conn, p *ServerParams, msg messages.Message) {
+	d := db.Db()
+	switch admin := msg.Sub.(type) {
+	case *impl.Join:
+
+		// this is an INSERT OR IGNORE query
+		// if it already exists, that's cool
+		// because we're about to select it
+		room, err := d.InsertRoom(context.Background(), db.InsertRoomParams{Name: admin.RoomName})
+		if err != nil {
+			return
+		}
+		utils.DebugLogger.Printf("got room %#v\n", room)
+
+		video, err := d.SelectCurrentVideoByRoomId(context.Background(), room.ID)
+		if err != nil {
+			return
+		}
+		utils.DebugLogger.Printf("got video %#v\n", video)
+
+		p.Manager.AddClient(room.ID, utils.Client{Name: admin.Username, Conn: conn})
+		utils.DebugLogger.Printf("adding client name %s", admin.Username)
+
+		accept := messages.NewFromSub(&impl.Accept{Action: impl.AcceptHead.Ok, RoomId: room.ID}, msg.RoomId)
+		acceptBits, _ := accept.MarshalBinary()
+		conn.Write(acceptBits)
+		utils.DebugLogger.Printf("sent response %#v\n", accept)
+
+		change := messages.NewFromSub(&impl.Change{Action: impl.ChgImmediate, Uri: video.Uri}, accept.RoomId)
+		changeBits, _ := change.MarshalBinary()
+		conn.Write(changeBits)
+		utils.DebugLogger.Printf("sent response %#v\n", change)
+
+	default:
+		utils.ErrorLogger.Printf("server got a non-command message: %#v\n", msg)
+
+	}
+
 }

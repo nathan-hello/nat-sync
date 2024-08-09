@@ -1,54 +1,34 @@
 package messages
 
-import (
-	"github.com/nathan-hello/nat-sync/src/utils"
-)
+import "github.com/nathan-hello/nat-sync/src/utils"
+
+var macros map[string][]byte = map[string][]byte{
+	"room": []byte("0 room action=create name=asdf"),
+	"test": []byte(`1 change uri=/mnt/hdd/media/cats/exercise.mp4;
+		        1 wait secs=1;
+		        1 pause;
+		        1 wait secs=1;
+		        1 play;
+		        1 wait secs=1;
+		        1 stop;
+		        1 wait secs=1;`),
+	"youtube": []byte(`1 change uri=https://www.youtube.com/watch?v=snYu2JUqSWs;
+		         1 wait     secs=5;
+		         1 stop    ;`),
+	"j": []byte("0 join --roomname=cats username=nate;"),
+}
 
 func IsMacro(s string) []Message {
-	var roomId int64 = 1
-	switch s {
-	case "cat":
-		cat, err := New("roomid=1; change uri=/mnt/hdd/media/cats/exercise.mp4", nil)
-		if err != nil {
-			utils.ErrorLogger.Printf("Error creating command 'change': %v\n", err)
-			return nil
-		}
-		return cat
-
-	case "test":
-		test, err := New(
-			`roomid=1; change uri=/mnt/hdd/media/cats/exercise.mp4;
-		        wait     secs=1;
-		        pause   ;
-		        wait     secs=1;
-		        play    ;
-		        wait     secs=1;
-		        stop    ;
-		        wait     secs=1;`, nil)
-		if err != nil {
-			utils.ErrorLogger.Println(err)
-			return nil
-		}
-		return test
-
-	case "testyt":
-		testyt, err := New(
-			`roomid=1; change uri=https://www.youtube.com/watch?v=snYu2JUqSWs;
-		        wait     secs=5;
-		        stop    ;
-                `, &roomId)
-		if err != nil {
-			utils.ErrorLogger.Println(err)
-			return nil
-		}
-		return testyt
-	case "j":
-		testyt, err := New(`roomid=1; join --roomname=cats username=nate;`, nil)
-		if err != nil {
-			utils.ErrorLogger.Println(err)
-			return nil
-		}
-		return testyt
+	text, ok := macros[s]
+	if !ok {
+		return nil
 	}
-	return nil
+
+	msgs, err := NewMulti(text)
+	if err != nil {
+		utils.ErrorLogger.Printf("macro was found but did not work. macro: %s, err: %s", text, err)
+		return nil
+	}
+
+	return msgs
 }

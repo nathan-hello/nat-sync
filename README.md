@@ -72,3 +72,10 @@ OPTIONS, IDEALLY:
 
 NOTES:
     - MPV requires [yt-dlp](https://github.com/yt-dlp/yt-dlp) to be installed and in PATH to play youtube videos. Tested version for this is 2024.08.01. Minimum version unknown.
+ROOMS:
+    - CLIENT sends []byte to server. Server then... 
+        0) Decodes []byte into Message{}
+        1) sends message to appropiate room. 
+        2) if it is a server administration command, it goes to a special room
+        3) authenticates that the client is allowed to run that command
+        4) sends a response to the client

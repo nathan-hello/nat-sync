@@ -120,7 +120,7 @@ func (c *Room) Execute() ([]byte, error) {
 
 	switch c.Head {
 	case RoomHead.Create:
-		if err := d.InsertRoom(ctx, db.InsertRoomParams{Name: c.Name, Password: c.Password}); err != nil {
+		if _, err := d.InsertRoom(ctx, db.InsertRoomParams{Name: c.Name, Password: c.Password}); err != nil {
 			return nil, err
 		}
 		return RoomExecuteResponses.Ok, nil
@@ -144,7 +144,7 @@ func (c *Room) Execute() ([]byte, error) {
 }
 
 // Example:
-// ["name=nate"]
+// ["room action=create name=asdf"]
 func (c *Room) newFromString(s []string) error {
 	for _, v := range s {
 		v = strings.TrimPrefix(v, "-")

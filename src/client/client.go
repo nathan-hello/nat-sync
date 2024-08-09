@@ -51,8 +51,8 @@ func receive(conn net.Conn, p *ClientParams) {
 	for {
 
 		utils.DebugLogger.Printf("waitreader\n\n\n")
-		msgs, err := messages.WaitReader(reader)
-		utils.DebugLogger.Printf("got msg %#v\n\n", msgs)
+		msg, err := messages.WaitReader(reader)
+		utils.DebugLogger.Printf("got msg %#v\n\n", msg)
 		if err == io.EOF {
 			utils.DebugLogger.Printf("connection closed EOF\n")
 			return
@@ -61,24 +61,27 @@ func receive(conn net.Conn, p *ClientParams) {
 			utils.ErrorLogger.Printf("client got a bad message. error: %s\n", err)
 		}
 
-		for _, v := range msgs {
-			switch msg := v.Sub.(type) {
-			case messages.PlayerCommand:
-				utils.DebugLogger.Printf("appending cmd to playerqueue. cmd: %#v\n", msg)
-				p.Player.AppendQueue(msg)
-			case messages.AdminCommand:
-				switch admin := msg.(type) {
-				case *impl.Accept:
-					p.CurrentRoom = admin.RoomId
-					if !slices.Contains(p.JoinedRooms, admin.RoomId) {
-						p.JoinedRooms = append(p.JoinedRooms, admin.RoomId)
-					}
-				}
-			default:
-				utils.ErrorLogger.Printf("client was given a command that was not a player command! %#v\n", msg)
+		handleMessage(conn, p, msg)
+	}
+}
+
+func handleMessage(_ net.Conn, p *ClientParams, msg messages.Message) {
+	switch msg := msg.Sub.(type) {
+	case messages.PlayerCommand:
+		utils.DebugLogger.Printf("appending cmd to playerqueue. cmd: %#v\n", msg)
+		p.Player.AppendQueue(msg)
+	case messages.AdminCommand:
+		switch admin := msg.(type) {
+		case *impl.Accept:
+			p.CurrentRoom = admin.RoomId
+			if !slices.Contains(p.JoinedRooms, admin.RoomId) {
+				p.JoinedRooms = append(p.JoinedRooms, admin.RoomId)
 			}
 		}
+	default:
+		utils.ErrorLogger.Printf("client was given a command that was not a player command! %#v\n", msg)
 	}
+
 }
 
 func transmit(conn net.Conn, p *ClientParams) {
@@ -101,32 +104,33 @@ func transmit(conn net.Conn, p *ClientParams) {
 
 		macro := messages.IsMacro(text)
 		if macro != nil {
-			sendMsgs(conn, macro)
+			for _, v := range macro {
+				sendMsgs(conn, v)
+			}
 			continue
 		}
 
-		text = fmt.Sprintf("roomid=%d;%s", p.CurrentRoom, text)
+		text = fmt.Sprintf("%#x %s", p.CurrentRoom, text)
+		msg := messages.Message{}
 
-		msgs, err := messages.New(text, nil)
+		err := msg.TextUnmarshaller([]byte(text))
 		if err != nil {
 			utils.ErrorLogger.Println(err)
 			continue
 		}
-		sendMsgs(conn, msgs)
+		sendMsgs(conn, msg)
 	}
 
 }
 
-func sendMsgs(conn net.Conn, msgs []messages.Message) {
-	for _, m := range msgs {
-		bits, err := m.ToBits()
-		if err != nil {
-			utils.ErrorLogger.Println("cmd.ToBits() in client transmit. err: ", err)
-			continue
-		}
-		_, err = conn.Write(bits)
-		if err != nil {
-			utils.ErrorLogger.Printf("client writing bits failed. bits: %b\n", bits)
-		}
+func sendMsgs(conn net.Conn, msg messages.Message) {
+	bits, err := msg.MarshalBinary()
+	if err != nil {
+		utils.ErrorLogger.Println("cmd.ToBits() in client transmit. err: ", err)
+	}
+
+	_, err = conn.Write(bits)
+	if err != nil {
+		utils.ErrorLogger.Printf("client writing bits failed. bits: %b\n", bits)
 	}
 }

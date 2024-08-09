@@ -21,20 +21,8 @@ func (q *Queries) DeleteRoom(ctx context.Context, id int64) error {
 	return err
 }
 
-const deleteUser = `-- name: DeleteUser :exec
-DELETE FROM users WHERE id = ?
-`
-
-// DeleteUser
-//
-//	DELETE FROM users WHERE id = ?
-func (q *Queries) DeleteUser(ctx context.Context, id int64) error {
-	_, err := q.db.ExecContext(ctx, deleteUser, id)
-	return err
-}
-
-const insertRoom = `-- name: InsertRoom :exec
-INSERT INTO rooms (name, password) VALUES (?, ?)
+const insertRoom = `-- name: InsertRoom :one
+INSERT OR IGNORE INTO rooms (name, password) VALUES (?, ?) RETURNING id, name, password, currently_playing
 `
 
 type InsertRoomParams struct {
@@ -44,103 +32,105 @@ type InsertRoomParams struct {
 
 // table: rooms
 //
-//	INSERT INTO rooms (name, password) VALUES (?, ?)
-func (q *Queries) InsertRoom(ctx context.Context, arg InsertRoomParams) error {
-	_, err := q.db.ExecContext(ctx, insertRoom, arg.Name, arg.Password)
-	return err
+//	INSERT OR IGNORE INTO rooms (name, password) VALUES (?, ?) RETURNING id, name, password, currently_playing
+func (q *Queries) InsertRoom(ctx context.Context, arg InsertRoomParams) (Room, error) {
+	row := q.db.QueryRowContext(ctx, insertRoom, arg.Name, arg.Password)
+	var i Room
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Password,
+		&i.CurrentlyPlaying,
+	)
+	return i, err
 }
 
-const insertUser = `-- name: InsertUser :one
-INSERT INTO users (username) VALUES (?) RETURNING id, username
+const selectCurrentVideoByRoomId = `-- name: SelectCurrentVideoByRoomId :one
+SELECT video.uri, video.local FROM rooms
+JOIN video ON rooms.currently_playing = video.id
+WHERE rooms.id = ?
 `
 
-// table: users
+type SelectCurrentVideoByRoomIdRow struct {
+	Uri   string
+	Local bool
+}
+
+// SelectCurrentVideoByRoomId
 //
-//	INSERT INTO users (username) VALUES (?) RETURNING id, username
-func (q *Queries) InsertUser(ctx context.Context, username string) (User, error) {
-	row := q.db.QueryRowContext(ctx, insertUser, username)
-	var i User
-	err := row.Scan(&i.ID, &i.Username)
+//	SELECT video.uri, video.local FROM rooms
+//	JOIN video ON rooms.currently_playing = video.id
+//	WHERE rooms.id = ?
+func (q *Queries) SelectCurrentVideoByRoomId(ctx context.Context, id int64) (SelectCurrentVideoByRoomIdRow, error) {
+	row := q.db.QueryRowContext(ctx, selectCurrentVideoByRoomId, id)
+	var i SelectCurrentVideoByRoomIdRow
+	err := row.Scan(&i.Uri, &i.Local)
 	return i, err
 }
 
 const selectRoomById = `-- name: SelectRoomById :one
-SELECT id, name FROM rooms WHERE id = ?
+SELECT id, name, password, currently_playing FROM rooms WHERE id = ?
 `
-
-type SelectRoomByIdRow struct {
-	ID   int64
-	Name string
-}
 
 // SelectRoomById
 //
-//	SELECT id, name FROM rooms WHERE id = ?
-func (q *Queries) SelectRoomById(ctx context.Context, id int64) (SelectRoomByIdRow, error) {
+//	SELECT id, name, password, currently_playing FROM rooms WHERE id = ?
+func (q *Queries) SelectRoomById(ctx context.Context, id int64) (Room, error) {
 	row := q.db.QueryRowContext(ctx, selectRoomById, id)
-	var i SelectRoomByIdRow
-	err := row.Scan(&i.ID, &i.Name)
+	var i Room
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Password,
+		&i.CurrentlyPlaying,
+	)
 	return i, err
 }
 
 const selectRoomByName = `-- name: SelectRoomByName :one
-SELECT id, name FROM rooms WHERE name = ?
+SELECT id, name, password, currently_playing FROM rooms WHERE name = ?
 `
-
-type SelectRoomByNameRow struct {
-	ID   int64
-	Name string
-}
 
 // SelectRoomByName
 //
-//	SELECT id, name FROM rooms WHERE name = ?
-func (q *Queries) SelectRoomByName(ctx context.Context, name string) (SelectRoomByNameRow, error) {
+//	SELECT id, name, password, currently_playing FROM rooms WHERE name = ?
+func (q *Queries) SelectRoomByName(ctx context.Context, name string) (Room, error) {
 	row := q.db.QueryRowContext(ctx, selectRoomByName, name)
-	var i SelectRoomByNameRow
-	err := row.Scan(&i.ID, &i.Name)
+	var i Room
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Password,
+		&i.CurrentlyPlaying,
+	)
 	return i, err
 }
 
 const selectRoomByNameWithPassword = `-- name: SelectRoomByNameWithPassword :one
-SELECT id, name, password FROM rooms WHERE name = ?
+SELECT id, name, password, currently_playing, password FROM rooms WHERE name = ?
 `
+
+type SelectRoomByNameWithPasswordRow struct {
+	ID               int64
+	Name             string
+	Password         string
+	CurrentlyPlaying *int64
+	Password_2       string
+}
 
 // SelectRoomByNameWithPassword
 //
-//	SELECT id, name, password FROM rooms WHERE name = ?
-func (q *Queries) SelectRoomByNameWithPassword(ctx context.Context, name string) (Room, error) {
+//	SELECT id, name, password, currently_playing, password FROM rooms WHERE name = ?
+func (q *Queries) SelectRoomByNameWithPassword(ctx context.Context, name string) (SelectRoomByNameWithPasswordRow, error) {
 	row := q.db.QueryRowContext(ctx, selectRoomByNameWithPassword, name)
-	var i Room
-	err := row.Scan(&i.ID, &i.Name, &i.Password)
-	return i, err
-}
-
-const selectUserById = `-- name: SelectUserById :one
-SELECT id, username FROM users WHERE id = ?
-`
-
-// SelectUserById
-//
-//	SELECT id, username FROM users WHERE id = ?
-func (q *Queries) SelectUserById(ctx context.Context, id int64) (User, error) {
-	row := q.db.QueryRowContext(ctx, selectUserById, id)
-	var i User
-	err := row.Scan(&i.ID, &i.Username)
-	return i, err
-}
-
-const selectUserByName = `-- name: SelectUserByName :one
-SELECT id, username FROM users WHERE username = ?
-`
-
-// SelectUserByName
-//
-//	SELECT id, username FROM users WHERE username = ?
-func (q *Queries) SelectUserByName(ctx context.Context, username string) (User, error) {
-	row := q.db.QueryRowContext(ctx, selectUserByName, username)
-	var i User
-	err := row.Scan(&i.ID, &i.Username)
+	var i SelectRoomByNameWithPasswordRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Password,
+		&i.CurrentlyPlaying,
+		&i.Password_2,
+	)
 	return i, err
 }
 
@@ -158,22 +148,5 @@ type UpdateRoomNameByIdParams struct {
 //	UPDATE rooms SET name = ? WHERE id = ?
 func (q *Queries) UpdateRoomNameById(ctx context.Context, arg UpdateRoomNameByIdParams) error {
 	_, err := q.db.ExecContext(ctx, updateRoomNameById, arg.Name, arg.ID)
-	return err
-}
-
-const updateUserNameById = `-- name: UpdateUserNameById :exec
-UPDATE users SET username = ? WHERE id = ?
-`
-
-type UpdateUserNameByIdParams struct {
-	Username string
-	ID       int64
-}
-
-// UpdateUserNameById
-//
-//	UPDATE users SET username = ? WHERE id = ?
-func (q *Queries) UpdateUserNameById(ctx context.Context, arg UpdateUserNameByIdParams) error {
-	_, err := q.db.ExecContext(ctx, updateUserNameById, arg.Username, arg.ID)
 	return err
 }

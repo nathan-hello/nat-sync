@@ -35,6 +35,9 @@ func (m *Manager) AddClient(room int64, c utils.Client) {
 	m.Lock.Lock()
 	defer m.Lock.Unlock()
 	currentRoom, ok := m.Rooms[room]
+
+	c.Id = int64(len(currentRoom.Clients) + 1)
+
 	if !ok {
 		utils.ErrorLogger.Printf("tried to add client to nonexistent room. room requested: %d, room map: %#v\n", room, m.Rooms)
 		return

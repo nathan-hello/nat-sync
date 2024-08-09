@@ -5,12 +5,19 @@
 package db
 
 type Room struct {
-	ID       int64
-	Name     string
-	Password string
+	ID               int64
+	Name             string
+	Password         string
+	CurrentlyPlaying *int64
 }
 
-type User struct {
-	ID       int64
-	Username string
+type RoomHistory struct {
+	RoomID  *int64
+	VideoID *int64
+}
+
+type Video struct {
+	ID    int64
+	Uri   string
+	Local bool
 }

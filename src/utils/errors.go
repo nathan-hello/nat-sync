@@ -8,7 +8,7 @@ import (
 var (
 	ErrInvalidArg    = errors.New("command was given invalid arguments")
 	ErrInvalidCmd    = errors.New("command given to server is not valid")
-	ErrNoContent     = errors.New("command given has no content")
+	ErrTextNoContent = errors.New("text given has no content")
 	ErrUsernameBlank = errors.New("username string in command was blank")
 	ErrUsernameLong  = errors.New("username is too long. must be <255 characters")
 	ErrNoRoomClient  = errors.New("room id was not specified. you must join a room first")
